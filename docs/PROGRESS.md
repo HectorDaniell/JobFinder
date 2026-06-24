@@ -1,0 +1,244 @@
+# JobFinder — Progreso de implementación
+
+> Fecha de inicio: 2026-06-22 · Última actualización: 2026-06-23
+
+---
+
+## Sprint 0 — Setup inicial ✅ COMPLETADO
+
+**Objetivo:** Entorno listo, dependencias instaladas, proyecto compila.
+
+**Duración:** ~2 horas.
+
+### Tareas completadas
+
+#### ✅ 1. Verificar Docker
+- Docker Desktop v29.5.3 instalado y corriendo
+- Comando: `docker --version` → OK
+- Comando: `docker compose --version` → OK
+- Puerto 5433 (Postgres) y 6379 (Redis) confirmados
+
+#### ✅ 2. Infraestructura Docker levantada
+- `docker compose up -d` ejecutado correctamente
+- Contenedores creados:
+  - `jobfinder-db` (PostgreSQL 16 + pgvector) en puerto 5433
+  - `jobfinder-redis` (Redis 7 Alpine) en puerto 6379
+  - Red `jobfinder-net` creada
+  - Volúmenes `pgdata` y `redisdata` creados
+- Health checks iniciando (tolerancia normal)
+- **Nota importante:** Puerto configurado en 5433 (no 5432) para evitar conflictos con proyectos de trabajo del usuario
+
+#### ✅ 3. Instalar dependencias
+- `npm install -g pnpm` → pnpm 11.8.0 instalado
+- `pnpm install` ejecutado exitosamente
+- 850 dependencias resueltas
+- Notas de compatibilidad:
+  - Voyage AI SDK removido temporalmente (no existe en npm registry; se usará en Fase 2)
+  - Puppeteer removido temporalmente (se usará en Sprint 3, espacio en disco)
+  - Builds nativos habilitados (NestJS, esbuild, msgpackr)
+
+#### ✅ 4. Configurar TypeScript
+- Agregado `baseUrl: "."` a todos los tsconfig.json (core, db, shared, llm, sources, documents)
+- Root tsconfig.json ajustado:
+  - Removido `rootDir` (no aplica en monorepo)
+  - Agregado `baseUrl: "."`
+  - Actualizado `include` a `["packages/*/src/**/*", "apps/*/src/**/*"]`
+  - Mantenidos `paths` para imports de alias (`@jobfinder/*`)
+- Removidas referencias a `pgvector` en schema (no soportado aún; se agregará en Fase 2)
+
+#### ✅ 5. Compilar @jobfinder/core
+- `pnpm --filter core run build` ejecutado exitosamente
+- Output: `packages/core/dist/` generado
+- Archivos compilados:
+  - `domain/entities/Profile.ts` → Profile class
+  - `domain/entities/Job.ts` → Job class
+  - `domain/entities/Bullet.ts` → Bullet class
+  - `domain/value-objects/JobScore.ts` → JobScore class
+  - `ports/JobSourcePort.ts` → Interfaz de fuente de empleos
+  - `ports/LlmPort.ts` → Interfaz de LLM
+  - `ports/EmbedderPort.ts` → Interfaz de embeddings
+  - `errors/DomainError.ts` → Errores del dominio
+  - `index.ts` → Barrel export
+
+#### ✅ 6. Type-check del proyecto completo
+- `pnpm type-check` ejecutado sin errores
+- Verificación exitosa de tipos en:
+  - packages/core
+  - packages/db
+  - packages/shared
+  - packages/llm
+  - packages/sources
+  - packages/documents
+  - apps/api (estructura, aún sin código)
+  - apps/worker (estructura, aún sin código)
+  - apps/web (estructura, aún sin código)
+
+#### ✅ 7. Crear configuración base
+- ✅ `.env` creado desde `.env.example`
+- ✅ `.eslintrc.js` configurado (TypeScript strict)
+- ✅ `.prettierrc` configurado (formato estándar)
+- ✅ `docker-compose.yml` sin sección `version` (obsoleta)
+- ✅ `pnpm-workspace.yaml` configurado correctamente
+- ✅ Builds nativos habilitados en workspace
+
+#### ✅ 8. Documentación
+- ✅ Este archivo (`PROGRESS.md`) creado
+- ✅ [ROADMAP.md](./ROADMAP.md) con plan detallado de 5 sprints
+- ✅ [STRUCTURE.md](../STRUCTURE.md) documentando estructura del monorepo
+- ✅ [SETUP.md](./SETUP.md) con instrucciones de instalación
+- ✅ Root [README.md](../README.md) actualizado
+
+---
+
+## Estado actual
+
+### ✅ Lo que está listo
+- Entorno local completamente configurado
+- Docker y herramientas instaladas
+- Monorepo TypeScript esqueletado
+- Dominio (@jobfinder/core) compilando sin errores
+- Type-checking pasan 100%
+- Estructura de carpetas y configuración en lugar
+
+### ⏳ Lo que sigue
+- **Sprint 1:** Implementar repositorios (ProfileRepository, BulletRepository, JobRepository)
+- **Sprint 2:** Implementar Claude adapter (tailorCv, tailorCoverLetter)
+- **Sprint 3:** Generador de documentos (PDF, DOCX)
+- **Sprint 4:** REST API (NestJS)
+- **Sprint 5:** Frontend (Next.js)
+
+---
+
+## Checklist de Sprint 0
+
+- [x] Docker instalado y corriendo
+- [x] pnpm instalado
+- [x] Dependencias del monorepo resueltas
+- [x] TypeScript configurado correctamente
+- [x] Core domain compila sin errores
+- [x] Type-check pasa al 100%
+- [x] Archivos de configuración (.env, ESLint, Prettier)
+- [x] Documentación inicial completa
+- [x] Roadmap de 5 sprints documentado
+
+---
+
+## Notas técnicas
+
+### Variables de entorno (.env)
+- `DATABASE_URL`: `postgresql://jobfinder:localdev@localhost:5433/jobfinder`
+- `REDIS_URL`: `redis://localhost:6379`
+- API keys de Anthropic y Voyage pendientes (no necesarias para Sprint 0)
+- Google OAuth pendiente (Fase 2)
+
+### Puertos
+- **5433** — Postgres (JobFinder)
+- **6379** — Redis (JobFinder)
+- **3000** — Frontend Next.js (cuando se levante)
+- **3001** — API NestJS (cuando se levante)
+
+### Comandos útiles (Sprint 0)
+```bash
+# Levantar infraestructura
+docker compose up -d
+docker compose ps
+
+# Verificar estado
+docker compose logs db
+docker compose logs redis
+
+# Compilar core
+pnpm --filter core run build
+
+# Type-check
+pnpm type-check
+
+# Ver estructura del workspace
+pnpm list --depth=0
+```
+
+### Decisiones de diseño (Sprint 0)
+1. **TypeScript strict mode:** Forzado en tsconfig (`strict: true`)
+2. **Alias imports:** Configurados (@jobfinder/*) para claridad
+3. **Local-first BD:** Postgres local en Docker (no cloud)
+4. **Sin pgvector aún:** Se agregará cuando Drizzle tenga soporte completo
+5. **Minimalist dependencies:** Removidas librerías innecesarias para sprint 0 (Voyage, Puppeteer)
+
+---
+
+## Aclaraciones finales (Sprint 0)
+
+### Estructura de repos
+- **apps/**: Cada app (api, worker, web) tiene su `package.json` (✅ correcto)
+- **node_modules/**: Solo UNO en la raíz (limpiamos los duplicados)
+- **pnpm-lock.yaml**: Un solo archivo centralizado (versiona todo)
+
+### Cómo levantar las apps (Sprint 1+)
+**Opción A (recomendada):** 3 terminales con `pnpm run dev:api`, `pnpm run dev:worker`, `pnpm run dev:web`
+**Opción B:** 1 terminal con `pnpm run dev` (paralelo)
+
+Ambas funcionan. Opción A es más clara para desarrollo.
+
+### Migraciones (solo DÍA 1)
+`pnpm run migrate` se ejecuta **una sola vez** (crea las tablas). No lo repites mañana.
+Solo la vuelves a ejecutar si borraste la BD o hay nuevas migraciones en el repo.
+
+## Próxima sesión
+
+Al iniciar la próxima sesión:
+1. `docker compose up -d` para traer la BD online
+2. `pnpm install` (debería estar en cache, es rápido)
+3. Continuar con **Sprint 1: Repositorios**
+
+Tiempo estimado Sprint 0 next run: < 1 minuto (solo levantar Docker).
+
+---
+
+## 📅 SESIÓN 2 — Sprint 0 completado + Skeleton de apps
+
+**Fecha:** 2026-06-23 (continuación)
+
+### ✅ Completado hoy
+
+#### 6. Crear estructura mínima de apps
+- ✅ `apps/api/src/main.ts` + `app.module.ts`
+- ✅ `apps/worker/src/main.ts` + `app.module.ts`
+- ✅ `apps/web/app/page.tsx` + `layout.tsx`
+- ✅ `tsconfig.json` en cada app (override para CommonJS en NestJS)
+
+#### 7. Resolver 4 configuraciones de setup
+1. **node_modules duplicados en apps** → `.npmrc` con `shamefully-hoist=true`
+2. **ESM vs CommonJS** → Override `module: "CommonJS"` en tsconfig de apps
+3. **Sin driver HTTP en NestJS** → Pasar `FastifyAdapter` a `NestFactory.create()`
+4. **Falta @types/node** → Agregar a root `package.json`
+
+#### 8. Levantar y validar las 3 apps
+- ✅ **api** corriendo en http://localhost:3001 (responde 404 = vivo)
+- ✅ **worker** escuchando Redis sin errores
+- ✅ **web** levantado en http://localhost:3000 con landing page visible
+
+### 📚 Documentación de lecciones
+Todas las 4 configuraciones son **estándares de la industria**:
+- Monorepos profesionales siempre tienen `.npmrc`
+- Todo proyecto Node+TypeScript tiene `@types/node`
+- Elegir servidor explícitamente es el estándar en NestJS
+- Override de tsconfig por app es la forma de separar concerns en workspaces
+
+### ✅ Sprint 0 — Checklist final
+- [x] Docker Postgres + Redis corriendo
+- [x] pnpm install funcionando
+- [x] TypeScript compilando sin errores
+- [x] Core domain listo
+- [x] Apps (api, worker, web) levantando y respondiendo
+- [x] Configuración permanente (.npmrc, tsconfig, package.json)
+- [x] Documentación completa (SETUP.md, ROADMAP.md, PROGRESS.md)
+
+### 🚀 Sprint 0 = COMPLETAMENTE FUNCIONAL
+
+**Próxima sesión:** ir directo a Sprint 1 (repositorios) sin setup. Solo:
+```bash
+docker compose up -d
+pnpm run dev:api   # Terminal 1
+pnpm run dev:worker # Terminal 2
+pnpm run dev:web    # Terminal 3
+```

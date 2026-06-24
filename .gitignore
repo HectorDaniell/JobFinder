@@ -1,0 +1,76 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+
+# Environment variables 
+.env
+.env.local
+.env.*.local
+
+# Secrets / OAuth / llaves 
+# Google OAuth (Gmail, Docs, Drive) y tokens cifrados en reposo
+client_secret*.json
+credentials.json
+token.json
+token*.json
+tokens/
+*.pem
+*.key
+secrets/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+.next/
+out/
+next-env.d.ts
+
+# Monorepo / build cache
+.turbo/
+.cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Docker 
+pgdata/
+redisdata/
+
+# Database backups 
+backup_*.sql
+*.dump
+
+# Documentos generados (CV/cartas PDF/DOCX — datos personales)
+generated/
+output/
+
+# Puppeteer / Chromium descargado
+.local-chromium/
+
+# Temporal
+*.tmp
+
+# Test coverage / artefactos
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+playwright/.cache/

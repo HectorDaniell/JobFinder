@@ -1,0 +1,20 @@
+{
+  "name": "@jobfinder/llm",
+  "version": "0.1.0",
+  "description": "LLM adapters (Claude, embeddings)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@jobfinder/core": "workspace:*",
+    "@jobfinder/shared": "workspace:*",
+    "@anthropic-ai/sdk": "^0.20.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

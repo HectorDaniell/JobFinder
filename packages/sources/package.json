@@ -1,0 +1,21 @@
+{
+  "name": "@jobfinder/sources",
+  "version": "0.1.0",
+  "description": "Job source adapters (Gmail, GetOnBoard, etc.)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@jobfinder/core": "workspace:*",
+    "@jobfinder/shared": "workspace:*",
+    "googleapis": "^118.0.0",
+    "axios": "^1.6.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

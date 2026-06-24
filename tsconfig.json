@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
+    "moduleResolution": "bundler",
+    "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "removeComments": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "@jobfinder/core": ["packages/core/src"],
+      "@jobfinder/core/*": ["packages/core/src/*"],
+      "@jobfinder/db": ["packages/db/src"],
+      "@jobfinder/db/*": ["packages/db/src/*"],
+      "@jobfinder/shared": ["packages/shared/src"],
+      "@jobfinder/shared/*": ["packages/shared/src/*"],
+      "@jobfinder/sources": ["packages/sources/src"],
+      "@jobfinder/sources/*": ["packages/sources/src/*"],
+      "@jobfinder/llm": ["packages/llm/src"],
+      "@jobfinder/llm/*": ["packages/llm/src/*"],
+      "@jobfinder/documents": ["packages/documents/src"],
+      "@jobfinder/documents/*": ["packages/documents/src/*"]
+    }
+  },
+  "ts-node": {
+    "transpileOnly": true,
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  },
+  "include": ["packages/*/src/**/*", "apps/*/src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

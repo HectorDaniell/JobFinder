@@ -1,0 +1,93 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: jobfinder-db
+    environment:
+      POSTGRES_USER: jobfinder
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: jobfinder
+      POSTGRES_INITDB_ARGS: "-c shared_preload_libraries=vector"
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./packages/db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U jobfinder -d jobfinder']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - jobfinder-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: jobfinder-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - jobfinder-net
+
+  # Opcional: descomenta si quieres levantar todo en Docker (incluyendo apps)
+  # api:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/api/Dockerfile
+  #   container_name: jobfinder-api
+  #   ports:
+  #     - "3001:3001"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   environment:
+  #     DATABASE_URL: postgresql://jobfinder:localdev@db:5432/jobfinder
+  #     REDIS_URL: redis://redis:6379
+  #   networks:
+  #     - jobfinder-net
+  #
+  # worker:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/worker/Dockerfile
+  #   container_name: jobfinder-worker
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   environment:
+  #     DATABASE_URL: postgresql://jobfinder:localdev@db:5432/jobfinder
+  #     REDIS_URL: redis://redis:6379
+  #   networks:
+  #     - jobfinder-net
+  #
+  # web:
+  #   build:
+  #     context: .
+  #     dockerfile: apps/web/Dockerfile
+  #   container_name: jobfinder-web
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - api
+  #   networks:
+  #     - jobfinder-net
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+
+networks:
+  jobfinder-net:
+    driver: bridge

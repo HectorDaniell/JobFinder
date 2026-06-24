@@ -1,0 +1,25 @@
+{
+  "name": "@jobfinder/db",
+  "version": "0.1.0",
+  "description": "Database schema (Drizzle) and repositories",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "generate": "drizzle-kit generate:pg",
+    "migrate": "node scripts/migrate.js",
+    "push": "drizzle-kit push:pg",
+    "studio": "drizzle-kit studio",
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@jobfinder/core": "workspace:*",
+    "postgres": "^3.4.0",
+    "drizzle-orm": "^0.30.0",
+    "drizzle-kit": "^0.20.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

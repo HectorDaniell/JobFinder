@@ -1,0 +1,21 @@
+{
+  "name": "@jobfinder/documents",
+  "version": "0.1.0",
+  "description": "CV and cover letter generation (PDF, DOCX)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@jobfinder/core": "workspace:*",
+    "@jobfinder/shared": "workspace:*",
+    "docx": "^8.5.0",
+    "handlebars": "^4.7.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
