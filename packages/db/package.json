@@ -2,6 +2,7 @@
   "name": "@jobfinder/db",
   "version": "0.1.0",
   "description": "Database schema (Drizzle) and repositories",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -9,6 +10,7 @@
     "migrate": "node scripts/migrate.js",
     "push": "drizzle-kit push:pg",
     "studio": "drizzle-kit studio",
+    "seed": "tsx scripts/seed.ts",
     "build": "tsc",
     "clean": "rm -rf dist"
   },

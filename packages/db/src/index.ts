@@ -1,3 +1,3 @@
-export { db } from './db';
-export * from './schema';
-export * from './repositories';
+export { db } from './db.js';
+export * from './schema.js';
+export * from './repositories/index.js';
