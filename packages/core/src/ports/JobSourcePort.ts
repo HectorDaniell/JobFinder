@@ -3,8 +3,6 @@
  * Implementations are in packages/sources
  */
 
-import { Job } from '../domain/entities/Job';
-
 export interface RawJob {
   title: string;
   company: string;

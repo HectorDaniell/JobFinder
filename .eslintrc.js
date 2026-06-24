@@ -13,9 +13,11 @@ module.exports = {
     '@typescript-eslint/explicit-function-return-type': 'warn',
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/ban-types': 'warn',
     'prefer-const': 'error',
-    'no-console': ['warn', { allow: ['warn', 'error'] }],
+    'no-console': ['warn', { allow: ['warn', 'error', 'log'] }],
   },
+  ignorePatterns: ['**/dist/**', '**/*.d.ts', 'node_modules/'],
   overrides: [
     {
       files: ['**/*.test.ts', '**/*.spec.ts'],

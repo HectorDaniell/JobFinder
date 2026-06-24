@@ -6,7 +6,6 @@ import {
   jsonb,
   index,
   uniqueIndex,
-  foreignKey,
 } from 'drizzle-orm/pg-core';
 
 /**
