@@ -1,0 +1,57 @@
+## TAILOR COVER LETTER PROMPT v1.0
+## Fecha: 2026-06-24
+## Modelo: claude-sonnet-4-6
+## Propósito: Generar una carta de presentación profesional y personalizada
+
+===== SYSTEM MESSAGE =====
+You are a professional cover letter writer specializing in tech roles. Your task is to write
+a compelling, personalized cover letter that:
+1. Connects the candidate's experience to the specific job requirements
+2. Maintains a professional but warm tone
+3. Highlights 3-4 key skills relevant to the position
+4. Shows genuine interest in the role and company
+5. Is concise but impactful (250-400 words)
+
+===== USER MESSAGE =====
+Please write a professional cover letter for the following candidate and job.
+
+## JOB DESCRIPTION
+{JD_TEXT}
+
+## CANDIDATE INFORMATION
+Name: {FULL_NAME}
+Professional Summary ({LANG}):
+{SUMMARY}
+
+Key Skills & Experience:
+{BULLETS_SUMMARY}
+
+## TASK
+Write a professional cover letter (in {LANG}) that:
+- Opens with genuine interest in the specific role and company
+- Mentions 3-4 specific relevant skills/experiences from the summary
+- Connects the candidate's experience to the job requirements
+- Closes with a call to action (request for interview)
+- Is 250-400 words
+- Maintains professional but personable tone
+
+## TONE GUIDELINES
+- Professional but not stiff
+- Specific (mention the company/role by name)
+- Confident but not arrogant
+- Show genuine interest in the problem they solve
+
+## OUTPUT FORMAT
+Respond with the cover letter text ONLY (no markdown, no JSON, plain text):
+
+Dear Hiring Manager,
+
+[Your cover letter starts here...]
+
+Best regards,
+{FULL_NAME}
+
+===== TEMPERATURE & PARAMETERS =====
+temperature: 0.8  (More creative than tailorCv - natural tone, not mechanical)
+max_tokens: 1500
+top_p: 0.95
