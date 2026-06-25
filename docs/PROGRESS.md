@@ -90,19 +90,20 @@
 
 ---
 
-## Estado actual
+## Estado actual (POST Sprint 1)
 
 ### ✅ Lo que está listo
-- Entorno local completamente configurado
-- Docker y herramientas instaladas
-- Monorepo TypeScript esqueletado
-- Dominio (@jobfinder/core) compilando sin errores
+- ✅ Sprint 0: Entorno, Docker, monorepo, core domain
+- ✅ Sprint 1: Repositorios + BD + migraciones + seed
+  - ProfileRepository, BulletRepository, JobRepository implementados
+  - Schema Drizzle con todas las tables (profile, bullet, job, job_score, application, etc.)
+  - Seed script con datos de prueba funcional
+  - Migraciones ejecutadas, BD lista
+- Docker Postgres + Redis corriendo
 - Type-checking pasan 100%
-- Estructura de carpetas y configuración en lugar
 
 ### ⏳ Lo que sigue
-- **Sprint 1:** Implementar repositorios (ProfileRepository, BulletRepository, JobRepository)
-- **Sprint 2:** Implementar Claude adapter (tailorCv, tailorCoverLetter)
+- **Sprint 2:** Adapter de Claude (tailorCv, tailorCoverLetter) ← EN PLANNING
 - **Sprint 3:** Generador de documentos (PDF, DOCX)
 - **Sprint 4:** REST API (NestJS)
 - **Sprint 5:** Frontend (Next.js)
@@ -235,10 +236,67 @@ Todas las 4 configuraciones son **estándares de la industria**:
 
 ### 🚀 Sprint 0 = COMPLETAMENTE FUNCIONAL
 
-**Próxima sesión:** ir directo a Sprint 1 (repositorios) sin setup. Solo:
-```bash
-docker compose up -d
-pnpm run dev:api   # Terminal 1
-pnpm run dev:worker # Terminal 2
-pnpm run dev:web    # Terminal 3
-```
+---
+
+## 📅 SESIÓN 3 — Sprint 1: Repositorios + BD + Seed
+
+**Fecha:** 2026-06-24 (continuación)
+
+### ✅ Sprint 1 — COMPLETADO
+
+#### ✅ 1. Schema Drizzle y Migraciones
+- `packages/db/src/schema.ts` con todas las tables:
+  - `profile` (user data, preferences)
+  - `bullet` (experiencia/logros con embeddings)
+  - `source` (fuentes de empleo: gmail, APIs)
+  - `job` (vacantes normalizadas, con dedup_hash)
+  - `job_score` (scoring de matching por capas)
+  - `application` (postulaciones registradas)
+  - `application_event` (timeline de cada postulación)
+  - `document` (CV/cover letter generados, versionados)
+  - `llm_usage` (tracking de costos)
+  - `email_message` (correos parseados)
+
+#### ✅ 2. Repositories implementados
+- **`ProfileRepository`** → CRUD perfil + bullets asociados
+- **`BulletRepository`** → CRUD bullets + búsqueda por profileId
+- **`JobRepository`** → CRUD jobs + dedup + búsqueda por hash
+- **`SourceRepository`** → CRUD de fuentes de empleo
+- **`ApplicationRepository`** → CRUD postulaciones + timeline
+
+#### ✅ 3. Migraciones Drizzle
+- `scripts/migrate.js` — ejecuta migraciones against Postgres
+- Schema compilado, tablas creadas en BD local
+
+#### ✅ 4. Seed Script
+- `packages/db/scripts/seed.ts` → genera datos de prueba:
+  - 1 Perfil (Daniel Developer, bilingüe, 5 años experiencia)
+  - 5 Bullets (experiencia/logros/educación con skills etiquetados)
+  - 1 Source (linkedin source simulada)
+  - 3 Jobs de prueba (Senior Backend, Full Stack, DevOps)
+- Ejecutable: `pnpm --filter db run seed`
+
+#### ✅ 5. Estado de BD
+- Postgres en 5433 ✅
+- Redis en 6379 ✅
+- Migraciones ejecutadas ✅
+- Datos de prueba cargables ✅
+
+### 📊 Deliverables Sprint 1
+- ✅ Schema relacional completo (9 tables + relaciones)
+- ✅ 5 Repositories implementados con métodos CRUD
+- ✅ Migraciones automáticas funcionales
+- ✅ Seed de datos para testing manual
+- ✅ BD local lista para consumo
+
+### Criterio de aceptación ✅
+- `ProfileRepository.create(profile)` → perfil guardado ✅
+- `ProfileRepository.findById(id)` → recupera con bullets ✅
+- `JobRepository.findByDedupHash(hash)` → dedup funciona ✅
+- `pnpm --filter db run seed` → datos en BD ✅
+
+---
+
+### 🚀 Sprint 1 = COMPLETAMENTE FUNCIONAL
+
+**Próxima sesión:** Planning de Sprint 2 (Claude Adapter)
