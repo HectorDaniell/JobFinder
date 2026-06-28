@@ -45,8 +45,12 @@ export const ClaudeTailorCvResponseSchema = z.object({
   reasoning_summary: z.string().optional(),
 });
 
-/** La carta de presentación: texto plano, longitud razonable. */
-export const TailorCoverLetterSchema = z.string().min(200).max(2000);
+/**
+ * La carta de presentación: texto plano, longitud razonable.
+ * Máx 3000 chars: el prompt pide 250–400 palabras (≈ hasta ~2400 chars) + holgura.
+ * Mín 200: piso para detectar respuestas vacías o truncadas.
+ */
+export const TailorCoverLetterSchema = z.string().min(200).max(3000);
 
 /* ============ 3. ANTI-INVENCIÓN ============ */
 

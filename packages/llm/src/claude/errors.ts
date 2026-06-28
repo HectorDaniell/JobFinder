@@ -71,6 +71,17 @@ export class MalformedLlmResponseError extends DomainError {
 }
 
 /**
+ * El perfil no tiene bullets en el banco → no hay nada que seleccionar.
+ * statusCode 422: la entrada no se puede procesar (falta data del usuario).
+ */
+export class ProfileHasNoBulletsError extends DomainError {
+  constructor(profileId: string) {
+    super(`Profile ${profileId} has no bullets to tailor from`, 'PROFILE_HAS_NO_BULLETS', 422);
+    Object.setPrototypeOf(this, ProfileHasNoBulletsError.prototype);
+  }
+}
+
+/**
  * El output del LLM violó los guardrails (p. ej. inventó un bullet).
  * statusCode 422: unprocessable entity (la salida no pasó validación de negocio).
  */

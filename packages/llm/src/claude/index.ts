@@ -24,6 +24,7 @@ export {
   LlmRateLimitError,
   LlmCallFailedError,
   MalformedLlmResponseError,
+  ProfileHasNoBulletsError,
   GuardrailViolationError,
 } from './errors';
 
@@ -41,5 +42,13 @@ export {
 } from './guardrails';
 
 // ---- Adapter de alto nivel (implements LlmPort) ----
-// Se exportará cuando lo implementemos en el siguiente paso (tailorCv/cover).
-// export { ClaudeAdapter } from './adapter';
+export { ClaudeAdapter, type BulletProvider } from './adapter';
+
+// ---- Carga/relleno de prompts ----
+export {
+  loadPromptFile,
+  fillTailorCvPrompt,
+  fillTailorCoverLetterPrompt,
+  extractSection,
+} from './prompt-loader';
+export type { PromptVars } from './prompt-loader';
