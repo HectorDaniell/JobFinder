@@ -258,11 +258,11 @@ Todas las 4 configuraciones son **estándares de la industria**:
   - `email_message` (correos parseados)
 
 #### ✅ 2. Repositories implementados
-- **`ProfileRepository`** → CRUD perfil + bullets asociados
+- **`ProfileRepository`** → CRUD perfil
 - **`BulletRepository`** → CRUD bullets + búsqueda por profileId
 - **`JobRepository`** → CRUD jobs + dedup + búsqueda por hash
-- **`SourceRepository`** → CRUD de fuentes de empleo
-- **`ApplicationRepository`** → CRUD postulaciones + timeline
+- **`JobScoreRepository`** → CRUD de scores de matching
+- (Application / Source / etc. tienen tabla en el schema pero aún no repositorio — Fase 2/3)
 
 #### ✅ 3. Migraciones Drizzle
 - `scripts/migrate.js` — ejecuta migraciones against Postgres
@@ -283,8 +283,8 @@ Todas las 4 configuraciones son **estándares de la industria**:
 - Datos de prueba cargables ✅
 
 ### 📊 Deliverables Sprint 1
-- ✅ Schema relacional completo (9 tables + relaciones)
-- ✅ 5 Repositories implementados con métodos CRUD
+- ✅ Schema relacional completo (10 tables + relaciones)
+- ✅ 4 Repositories implementados con métodos CRUD
 - ✅ Migraciones automáticas funcionales
 - ✅ Seed de datos para testing manual
 - ✅ BD local lista para consumo
@@ -300,3 +300,57 @@ Todas las 4 configuraciones son **estándares de la industria**:
 ### 🚀 Sprint 1 = COMPLETAMENTE FUNCIONAL
 
 **Próxima sesión:** Planning de Sprint 2 (Claude Adapter)
+
+---
+
+## 📅 SESIÓN 4 — Sprint 2: Claude Adapter (tailoring)
+
+**Fecha:** 2026-06-28
+
+### ✅ Sprint 2 — COMPLETADO
+
+**Objetivo:** que el sistema adapte CV y carta a una vacante con Claude, sin inventar datos.
+
+#### ✅ 1. Motor (`ClaudeClient`)
+- Envuelve `@anthropic-ai/sdk`; único punto de entrada `complete()`.
+- Retry con backoff exponencial (429/red), timeout por llamada, mapeo a errores tipados.
+- Logging de costo por llamada (vía `CostLogger` + un `usageSink` opcional).
+
+#### ✅ 2. Soporte
+- **`CostLogger`** + tabla de precios (Sonnet 4.6 / Haiku 4.5 / Opus 4.8).
+- **Errores tipados** con `statusCode` HTTP (InvalidAnthropicKey, LlmTimeout, RateLimit, CallFailed, MalformedLlmResponse, ProfileHasNoBullets, GuardrailViolation).
+- **Guardrails**: schemas Zod (entrada/salida) + `BulletOriginValidator` (anti-invención, similitud Jaccard).
+- **Prompts** como `.txt` versionados + `prompt-loader` (relleno puro y testeable).
+
+#### ✅ 3. Adapter (`ClaudeAdapter implements LlmPort`)
+- **`tailorCv`** ✅ — banco → prompt → motor → parseo → anti-invención → mapeo a `TailoredCv`.
+- **`tailorCoverLetter`** ✅ — texto libre (temp 0.7), validación de longitud, sin anti-invención.
+- **`scoreJob` / `extractJobs`** → stubs tipados (Fase 2).
+- **`BulletProvider`** (puerto definido por el consumidor) → `llm` NO depende de `db`.
+
+#### ✅ 4. Tests (Vitest)
+- 32 tests en 5 archivos (puros + mockeados). Real Claude nunca se llama (dobles).
+- Cobertura: **96% líneas · 90% ramas** (meta ~85% superada).
+- Comandos: `pnpm --filter @jobfinder/llm test` · `test:coverage`.
+
+#### ✅ 5. Documentación
+- ADRs **0009–0012** (modelos, TailoredCv en core, BulletProvider, prompts `.txt`).
+- READMEs de `packages/llm` y `packages/db` (deuda del Sprint 1 saldada).
+
+#### 🔧 Reconciliaciones (deuda técnica saldada)
+- `TailoredCv` duplicado → unificado como contrato único en `core`.
+- Modelo del plan (`claude-3-5-sonnet-20241022`) estaba **retirado** → migrado a `claude-sonnet-4-6`.
+
+### Criterio de aceptación ✅
+- `ClaudeAdapter` cumple `LlmPort` (compila: `tsc` exit 0).
+- Guardrail anti-invención rechaza bullets fabricados (test verde).
+- 32 tests en verde, cobertura > 85%.
+
+### ⏳ Lo que NO entra en Sprint 2 (siguiente)
+- **Sprint 3 (DocGen)**: convertir `TailoredCv` + carta en PDF/DOCX ATS-friendly.
+- Cablear `usageSink` a un `LlmUsageRepository` real (persistir costo en BD).
+- Empaquetado: copiar `prompts/*.txt` al `dist/` para producción (ADR-0012).
+
+---
+
+### 🚀 Sprint 2 = COMPLETAMENTE FUNCIONAL
