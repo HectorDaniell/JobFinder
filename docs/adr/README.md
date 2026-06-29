@@ -33,6 +33,7 @@ pueden "backfillear" como archivos más adelante si hiciera falta.)
 | [0010](0010-tailoredcv-contrato-unico-en-core.md) | `TailoredCv` como contrato único en el core | Aceptado |
 | [0011](0011-bulletprovider-puerto-del-consumidor.md) | `BulletProvider`: puerto definido por el consumidor | Aceptado |
 | [0012](0012-prompts-como-archivos-txt.md) | Prompts como archivos `.txt` versionados | Aceptado |
+| [0013](0013-documentport-contrato-de-generacion.md) | `DocumentPort`: contrato de generación de documentos | Aceptado |
 
 ## Cómo agregar uno
 
