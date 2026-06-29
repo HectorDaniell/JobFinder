@@ -17,6 +17,11 @@ export {
   type TailoredCv,
 } from './ports/LlmPort';
 export { type EmbedderPort } from './ports/EmbedderPort';
+export {
+  type DocumentPort,
+  type DocumentArtifact,
+  type DocFormat,
+} from './ports/DocumentPort';
 
 // Errors
 export {
