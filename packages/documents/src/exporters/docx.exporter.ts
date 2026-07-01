@@ -1,16 +1,14 @@
 /**
- * EXPORTADOR DOCX (CV)
+ * EXPORTADOR DOCX (CV y carta)
  *
- * Convierte un ResumeModel (neutral al formato) en los bytes de un .docx
- * ATS-friendly: una sola columna, sin tablas ni imágenes, texto 100%
- * seleccionable. Usa la librería `docx` (construcción programática).
- *
- * NO es una función pura (produce bytes vía la librería), pero SÍ es "tonta"
- * respecto al dominio: solo DIBUJA el modelo; no decide qué contenido va ni
- * traduce nada (los títulos ya vienen localizados en model.labels).
+ * Convierte un modelo neutral al formato en los bytes de un .docx ATS-friendly:
+ * una sola columna, sin tablas ni imágenes, texto 100% seleccionable. Usa la
+ * librería `docx` (construcción DECLARATIVA: se arma un árbol de párrafos y
+ * `Packer` lo serializa).
  */
 
 import { AlignmentType, Document, Packer, Paragraph, TextRun } from 'docx';
+import type { CoverLetterModel } from '../model/CoverLetterModel';
 import type { ResumeHeader, ResumeModel } from '../model/ResumeModel';
 
 /** MIME oficial de los .docx (OpenXML). Lo usará el adapter al armar el artifact. */
@@ -24,24 +22,36 @@ const SIZE_SECTION = 24;
 const SIZE_BODY = 22;
 const SIZE_CONTACT = 18;
 
-export async function exportResumeToDocx(model: ResumeModel): Promise<Uint8Array> {
-  const doc = new Document({
-    sections: [
-      {
-        children: [
-          ...headerParagraphs(model.header),
-          sectionHeading(model.labels.summary),
-          new Paragraph({ children: [run(model.summary)] }),
-          sectionHeading(model.labels.skills),
-          new Paragraph({ children: [run(model.skills.join(', '))] }),
-          sectionHeading(model.labels.experience),
-          ...model.experience.map(bulletParagraph),
-        ],
-      },
-    ],
-  });
+export function exportResumeToDocx(model: ResumeModel): Promise<Uint8Array> {
+  return renderToDocx([
+    ...headerParagraphs(model.header),
+    sectionHeading(model.labels.summary),
+    new Paragraph({ children: [run(model.summary)] }),
+    sectionHeading(model.labels.skills),
+    new Paragraph({ children: [run(model.skills.join(', '))] }),
+    sectionHeading(model.labels.experience),
+    ...model.experience.map(bulletParagraph),
+  ]);
+}
 
-  // Packer.toBuffer → Buffer de Node, que YA es un Uint8Array (sin conversión).
+export function exportCoverLetterToDocx(model: CoverLetterModel): Promise<Uint8Array> {
+  return renderToDocx([
+    ...headerParagraphs(model.header),
+    ...model.paragraphs.map(
+      (p) => new Paragraph({ spacing: { after: 160 }, children: [run(p)] })
+    ),
+  ]);
+}
+
+/**
+ * Envuelve el boilerplate común: un Document de una sección con los párrafos
+ * dados, serializado a bytes. docx es DECLARATIVO, así que recibe DATOS
+ * (los párrafos ya construidos).
+ *
+ * Packer.toBuffer → Buffer de Node, que YA es un Uint8Array (sin conversión).
+ */
+function renderToDocx(children: Paragraph[]): Promise<Uint8Array> {
+  const doc = new Document({ sections: [{ children }] });
   return Packer.toBuffer(doc);
 }
 
