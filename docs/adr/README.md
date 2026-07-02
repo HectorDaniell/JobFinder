@@ -34,6 +34,8 @@ pueden "backfillear" como archivos más adelante si hiciera falta.)
 | [0011](0011-bulletprovider-puerto-del-consumidor.md) | `BulletProvider`: puerto definido por el consumidor | Aceptado |
 | [0012](0012-prompts-como-archivos-txt.md) | Prompts como archivos `.txt` versionados | Aceptado |
 | [0013](0013-documentport-contrato-de-generacion.md) | `DocumentPort`: contrato de generación de documentos | Aceptado |
+| [0014](0014-pdfkit-sobre-puppeteer.md) | `pdfkit` para generar PDF (en vez de Puppeteer) | Aceptado |
+| [0015](0015-modelo-intermedio-de-documento.md) | Modelo intermedio entre el contenido y los formatos | Aceptado |
 
 ## Cómo agregar uno
 

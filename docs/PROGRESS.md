@@ -354,3 +354,55 @@ Todas las 4 configuraciones son **estándares de la industria**:
 ---
 
 ### 🚀 Sprint 2 = COMPLETAMENTE FUNCIONAL
+
+---
+
+## 📅 SESIÓN 5 — Sprint 3: Generador de documentos (DocGen)
+
+**Fecha:** 2026-07-01
+
+### ✅ Sprint 3 — COMPLETADO
+
+**Objetivo:** convertir el `TailoredCv` + la carta (Sprint 2) en archivos
+descargables **PDF y DOCX** ATS-friendly, sin depender de `llm` ni `db`.
+
+#### ✅ 1. Contrato (`DocumentPort` en core)
+- `generateCv` / `generateCoverLetter` → `DocumentArtifact { bytes, mimeType, filename }`.
+- `bytes: Uint8Array` (no `Buffer`) para mantener el core agnóstico a Node. ADR-0013.
+
+#### ✅ 2. Modelo intermedio + mappers (puros)
+- `ResumeModel` / `buildResumeModel` — qué va en el CV (decidido una vez).
+- `CoverLetterModel` / `buildCoverLetterModel` — carta (header + párrafos).
+- `buildHeader` — encabezado compartido CV/carta. ADR-0015.
+
+#### ✅ 3. Exporters
+- **DOCX** vía `docx` (árbol declarativo → `Packer.toBuffer`).
+- **PDF** vía `pdfkit` (stream imperativo → Promise + `Buffer.concat`). ADR-0014.
+- Ambos consumen el MISMO modelo: el pago del modelo intermedio.
+
+#### ✅ 4. Adapter (`DocumentAdapter implements DocumentPort`)
+- Orquesta: mapper → exporter según `format` → `DocumentArtifact` (+ `slugify` del filename).
+- SIN inyección de dependencias: sus colaboradores son puros/locales (nada que mockear).
+
+#### ✅ 5. Tests (Vitest)
+- **20 tests** en 5 archivos, **sin mocks** (piezas reales; se verifican los bytes: `%PDF`/`PK`).
+- Cobertura: **100%** (líneas, ramas, funciones).
+- Comandos: `pnpm --filter @jobfinder/documents test` · `test:coverage`.
+
+#### ✅ 6. Documentación y limpieza
+- ADRs **0013–0015** (puerto, pdfkit, modelo intermedio).
+- README de `packages/documents`.
+- `handlebars` retirado (quedó sin uso al elegir `pdfkit`).
+
+### Criterio de aceptación ✅
+- `DocumentAdapter` cumple `DocumentPort` (compila: `tsc` exit 0).
+- Genera PDF y DOCX válidos para CV y carta (firmas `%PDF`/`PK` verificadas en tests).
+- 20 tests en verde, cobertura 100%.
+
+### ⏳ Lo que NO entra en Sprint 3 (siguiente)
+- **Persistencia**: `DocumentRepository` en `db` + guardar el artifact (Sprint 4, la API).
+- Empaquetado de producción (compilar/copiar assets si hiciera falta).
+
+---
+
+### 🚀 Sprint 3 = COMPLETAMENTE FUNCIONAL
