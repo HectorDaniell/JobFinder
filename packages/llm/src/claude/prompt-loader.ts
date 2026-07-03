@@ -12,12 +12,11 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import type { Job, Profile, Bullet } from '@jobfinder/core';
 
-/** Carpeta donde viven los .txt, relativa a este módulo. */
-const PROMPTS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'prompts');
+/** Carpeta donde viven los .txt, relativa a este módulo (CJS: __dirname). */
+const PROMPTS_DIR = join(__dirname, 'prompts');
 
 /** Lee una plantilla .txt del directorio de prompts. */
 export function loadPromptFile(fileName: string): string {
