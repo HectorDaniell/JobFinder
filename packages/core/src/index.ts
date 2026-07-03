@@ -31,3 +31,11 @@ export {
   ConflictError,
   UnauthorizedError,
 } from './errors/DomainError';
+
+// Use cases
+export {
+  TailorDocuments,
+  type ProfileProvider,
+  type TailorInput,
+  type TailorResult,
+} from './use-cases/TailorDocuments';
