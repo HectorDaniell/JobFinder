@@ -33,7 +33,9 @@ import {
  */
 @Controller('profiles')
 export class ProfilesController {
-  constructor(private readonly profiles: ProfileRepository) {}
+  constructor(
+    private readonly profiles: ProfileRepository
+  ) {}
 
   @Post()
   async create(
