@@ -1,6 +1,6 @@
 # JobFinder — Progreso de implementación
 
-> Fecha de inicio: 2026-06-22 · Última actualización: 2026-06-23
+> Fecha de inicio: 2026-06-22 · Última actualización: 2026-07-08
 
 ---
 
@@ -406,3 +406,67 @@ descargables **PDF y DOCX** ATS-friendly, sin depender de `llm` ni `db`.
 ---
 
 ### 🚀 Sprint 3 = COMPLETAMENTE FUNCIONAL
+
+---
+
+## 📅 SESIÓN 6 — Sprint 4: REST API (NestJS)
+
+**Fecha:** 2026-07-08
+
+### ✅ Sprint 4 — COMPLETADO
+
+**Objetivo:** exponer los packages por HTTP para que un frontend pueda crear
+perfiles, cargar bullets y adaptar CV+carta. La API es un adaptador de entrada:
+traduce HTTP ⇆ packages, sin lógica de negocio propia.
+
+#### ✅ 1. Caso de uso `TailorDocuments` (en core)
+- Orquesta perfil → LLM (CV + carta en paralelo) → documentos por formato.
+- `ProfileProvider` (puerto del consumidor) → core no depende de `db`.
+- Fix: `instanceof` fiable en subclases de `DomainError` (`new.target.prototype`).
+
+#### ✅ 2. Bootstrap NestJS + composition root
+- `main.ts` (Fastify), `AppModule`, `InfraModule` (repos vía `useFactory`).
+- `/health`. Monorepo unificado a **CommonJS** (compatibilidad con Nest).
+
+#### ✅ 3. Validación + errores (transversal)
+- `ZodValidationPipe` (por ruta) → 400; `DomainExceptionFilter` (global vía
+  `APP_FILTER`) traduce `DomainError` → HTTP uniforme. ADR-0016.
+
+#### ✅ 4. CRUD de Profile
+- `POST/GET/PATCH/DELETE /profiles`; controller → repo directo (CRUD sin caso de
+  uso). Pre-checks → 409 (email duplicado) / 404. Reutiliza `PreferenceSchema`.
+
+#### ✅ 5. CRUD de Bullets (anidado)
+- `/profiles/:profileId/bullets`; helper `getOwned` verifica pertenencia (acceso
+  cruzado → 404). PATCH por merge (el repo recibe la entidad completa).
+
+#### ✅ 6. `POST /tailor` (endpoint estrella)
+- Construye un Job manual desde el body (se pega el JD; ToS-safe). Usa
+  `TailorDocuments`. Devuelve preview + archivos en **base64**.
+- **LLM perezoso** (`lazy-llm`): la API arranca sin `ANTHROPIC_API_KEY`. ADR-0017.
+
+#### ✅ 7. Tests e2e (Fastify `app.inject`)
+- Contenedor real de Nest + repos fake in-memory + `TailorDocuments` mockeado.
+- DI vía `@Inject(Token)` explícito (esbuild no emite metadata). ADR-0018.
+
+#### ✅ 8. Documentación
+- ADRs **0016–0018**; `apps/api/README.md`; este PROGRESS.
+
+### Tests
+- **api: 34 tests** (pipe 3 · filter 4 · profiles 7 · bullets 10 · tailor 3 · e2e 7).
+- Proyecto: **89 verdes** (core 3 · llm 32 · documents 20 · api 34).
+
+### Criterio de aceptación ✅
+- `POST /profiles` → 201; entrada inválida → 400; email duplicado → 409.
+- `POST /profiles/:id/tailor` → 200 con cv/carta + archivos en base64.
+- Errores tipados (no 500 genéricos); e2e en verde arrancando la app real.
+
+### ⏳ Lo que NO entra en Sprint 4 (siguiente)
+- **Sprint 5 (UI web)**: Next.js que consume estos endpoints.
+- Persistencia de documentos (`DocumentRepository`) → Fase 3.
+- Ingesta (Gmail/APIs) y auth → Fase 2.
+- Prueba en vivo de `/tailor` contra Claude (requiere `ANTHROPIC_API_KEY`).
+
+---
+
+### 🚀 Sprint 4 = COMPLETAMENTE FUNCIONAL
