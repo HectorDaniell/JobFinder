@@ -8,6 +8,7 @@ import {
   Param,
   Body,
   HttpCode,
+  Inject,
 } from '@nestjs/common';
 import { Bullet, NotFoundError } from '@jobfinder/core';
 import { BulletRepository, ProfileRepository } from '@jobfinder/db';
@@ -34,8 +35,8 @@ import {
 @Controller('profiles/:profileId/bullets')
 export class BulletsController {
   constructor(
-    private readonly bullets: BulletRepository,
-    private readonly profiles: ProfileRepository
+    @Inject(BulletRepository) private readonly bullets: BulletRepository,
+    @Inject(ProfileRepository) private readonly profiles: ProfileRepository
   ) {}
 
   @Post()

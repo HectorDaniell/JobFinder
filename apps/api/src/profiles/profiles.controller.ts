@@ -8,6 +8,7 @@ import {
   Param,
   Body,
   HttpCode,
+  Inject,
 } from '@nestjs/common';
 import { Profile, ConflictError, NotFoundError } from '@jobfinder/core';
 import { ProfileRepository } from '@jobfinder/db';
@@ -34,7 +35,7 @@ import {
 @Controller('profiles')
 export class ProfilesController {
   constructor(
-    private readonly profiles: ProfileRepository
+    @Inject(ProfileRepository) private readonly profiles: ProfileRepository
   ) {}
 
   @Post()

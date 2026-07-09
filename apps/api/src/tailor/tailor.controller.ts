@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Controller, Post, Param, Body } from '@nestjs/common';
+import { Controller, Post, Param, Body, HttpCode, Inject } from '@nestjs/common';
 import { Job, TailorDocuments, type TailorResult } from '@jobfinder/core';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { TailorRequestSchema, type TailorRequestDto } from './tailor.schema';
@@ -29,9 +29,10 @@ interface TailorResponse {
  */
 @Controller('profiles/:profileId/tailor')
 export class TailorController {
-  constructor(private readonly tailor: TailorDocuments) {}
+  constructor(@Inject(TailorDocuments) private readonly tailor: TailorDocuments) {}
 
   @Post()
+  @HttpCode(200) // genera documentos; no crea un recurso persistente -> 200, no 201
   async run(
     @Param('profileId') profileId: string,
     @Body(new ZodValidationPipe(TailorRequestSchema)) dto: TailorRequestDto
