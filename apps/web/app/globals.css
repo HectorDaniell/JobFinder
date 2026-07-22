@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * DESIGN TOKENS — "Señal"
+ * Colores como CANALES RGB ("R G B", sin coma ni rgb()) para que Tailwind les
+ * pueda aplicar opacidad: `bg-accent/10` -> rgb(var(--accent) / 0.10).
+ * Cambiar de tema = poner/quitar la clase `dark` en <html>: solo cambian estos
+ * valores; los componentes ni se enteran. Ese es el pago de los tokens.
+ */
+@layer base {
+  :root {
+    --bg: 250 250 250; /* zinc-50  */
+    --fg: 24 24 27; /* zinc-900 */
+    --muted: 113 113 122; /* zinc-500 */
+    --accent: 5 150 105; /* emerald-600: contraste AA sobre claro */
+    --accent-fg: 255 255 255;
+  }
+  .dark {
+    --bg: 9 9 11; /* zinc-950 */
+    --fg: 244 244 245; /* zinc-100 */
+    --muted: 161 161 170; /* zinc-400 */
+    --accent: 52 211 153; /* emerald-400: brilla sobre oscuro */
+    --accent-fg: 9 9 11;
+  }
+  body {
+    @apply bg-bg text-fg antialiased;
+  }
+}
+
+/*
+ * COMPONENTES — las "recetas" translúcidas de Señal viven aquí, en un solo
+ * lugar, encapsulando la diferencia claro/oscuro para que el markup quede limpio.
+ */
+@layer components {
+  /* Cristal: header flotante y modals (blur + translúcido + borde hairline) */
+  .glass {
+    @apply ring-1 backdrop-blur-md bg-white/70 ring-zinc-900/10 dark:bg-zinc-900/70 dark:ring-white/10;
+  }
+  /* Superficie: cards */
+  .card {
+    @apply rounded-2xl ring-1 bg-zinc-900/[0.02] ring-zinc-900/10 dark:bg-white/5 dark:ring-white/10;
+  }
+  /* Botón primario: la Señal en acción */
+  .btn-primary {
+    @apply rounded-full px-4 py-2 text-sm font-medium transition bg-accent text-accent-fg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent/50;
+  }
+  /* Chip acento translúcido (receta Protocol: fondo 10% + borde 20% + texto 100%) */
+  .chip-accent {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-accent/10 text-accent ring-1 ring-accent/20;
+  }
+}
