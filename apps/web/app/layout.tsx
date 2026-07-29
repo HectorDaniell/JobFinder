@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { Header } from '../components/Header';
+import { ProfileProvider } from '../components/ProfileProvider';
 import './globals.css';
 
 // next/font: descarga y auto-hospeda las fuentes en build (sin CDN, sin
@@ -38,8 +39,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="font-sans">
-        <Header />
-        {children}
+        {/* La "antena" del Context: todo lo de adentro puede sintonizar useProfile().
+            layout.tsx sigue siendo Server Component: envolver con un Client
+            Component NO convierte a los children — viajan como "slots" ya resueltos. */}
+        <ProfileProvider>
+          <Header />
+          {children}
+        </ProfileProvider>
       </body>
     </html>
   );

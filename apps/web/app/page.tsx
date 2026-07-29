@@ -1,6 +1,10 @@
+import { RedirectIfProfile } from '../components/RedirectIfProfile';
+
 export default function Home() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6">
+      {/* Con perfil ya creado, la home real es /tailor (guarda de navegación). */}
+      <RedirectIfProfile />
       {/* Glow decorativo — permitido aquí: es un hero (regla de decoración de Señal). */}
       <div
         aria-hidden
