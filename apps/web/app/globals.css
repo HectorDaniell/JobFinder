@@ -11,6 +11,10 @@
  */
 @layer base {
   :root {
+    /* color-scheme: hace que los controles NATIVOS del sistema (dropdown de un
+       <select>, scrollbars, date pickers) sigan el tema. Sin esto, un menú
+       nativo saldría blanco sobre una app oscura. */
+    color-scheme: light;
     --bg: 250 250 250; /* zinc-50  */
     --fg: 24 24 27; /* zinc-900 */
     --muted: 113 113 122; /* zinc-500 */
@@ -18,6 +22,7 @@
     --accent-fg: 255 255 255;
   }
   .dark {
+    color-scheme: dark;
     --bg: 9 9 11; /* zinc-950 */
     --fg: 244 244 245; /* zinc-100 */
     --muted: 161 161 170; /* zinc-400 */
@@ -49,5 +54,19 @@
   /* Chip acento translúcido (receta Protocol: fondo 10% + borde 20% + texto 100%) */
   .chip-accent {
     @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-accent/10 text-accent ring-1 ring-accent/20;
+  }
+  /* Botón secundario: mismo tamaño que el primario, sin peso visual */
+  .btn-ghost {
+    @apply rounded-full px-4 py-2 text-sm font-medium text-muted ring-1 transition ring-zinc-900/10 hover:text-fg dark:ring-white/10 disabled:opacity-40;
+  }
+  /* Campo de formulario */
+  .input {
+    @apply w-full rounded-xl bg-transparent px-3 py-2 text-sm ring-1 transition ring-zinc-900/15 placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-accent/60 dark:ring-white/15;
+  }
+  .input-error {
+    @apply ring-red-500/60 focus:ring-red-500/60;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium;
   }
 }
