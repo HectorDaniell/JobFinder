@@ -39,6 +39,10 @@ pueden "backfillear" como archivos más adelante si hiciera falta.)
 | [0016](0016-validacion-zod-y-errores-de-dominio.md) | Validación con Zod + traducción de errores de dominio | Aceptado |
 | [0017](0017-llm-perezoso-arranque-sin-api-key.md) | LLM perezoso: la API arranca sin `ANTHROPIC_API_KEY` | Aceptado |
 | [0018](0018-inject-explicito-sin-emit-decorator-metadata.md) | `@Inject` explícito (DI sin `emitDecoratorMetadata`) | Aceptado |
+| [0019](0019-rutas-de-next-en-vez-de-spa-con-tabs.md) | Rutas de Next en vez de una SPA con tabs | Aceptado |
+| [0020](0020-estado-context-y-localstorage-sin-redux.md) | Estado: Context + localStorage (sin Redux ni SWR) | Aceptado |
+| [0021](0021-design-tokens-senal-y-tema-claro-oscuro.md) | Design tokens "Señal" y tema claro/oscuro | Aceptado |
+| [0022](0022-llm-falso-para-desarrollo-sin-creditos.md) | LLM falso tras un flag para desarrollar sin créditos | Aceptado (temporal) |
 
 ## Cómo agregar uno
 

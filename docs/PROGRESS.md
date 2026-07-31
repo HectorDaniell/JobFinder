@@ -1,6 +1,6 @@
 # JobFinder — Progreso de implementación
 
-> Fecha de inicio: 2026-06-22 · Última actualización: 2026-07-08
+> Fecha de inicio: 2026-06-22 · Última actualización: 2026-07-31
 
 ---
 
@@ -470,3 +470,81 @@ traduce HTTP ⇆ packages, sin lógica de negocio propia.
 ---
 
 ### 🚀 Sprint 4 = COMPLETAMENTE FUNCIONAL
+
+---
+
+## 📅 SESIÓN 7 — Sprint 5: UI web (Next.js) · cierre de la Fase 1
+
+**Fecha:** 2026-07-31
+
+### ✅ Sprint 5 — COMPLETADO
+
+**Objetivo:** poner cara a la API para completar el flujo de la Fase 1: crear
+perfil → cargar bullets → pegar una oferta → descargar CV y carta.
+
+#### ✅ 1. Fundaciones e identidad visual ("Señal")
+- Tailwind + PostCSS cableados; **design tokens** como variables CSS en canal RGB
+  (permiten `bg-accent/10`), con tema **claro y oscuro** desde el inicio. ADR-0021.
+- Inter + JetBrains Mono vía `next/font` (self-hosted). Header flotante con blur
+  y script anti-parpadeo (FOUC).
+- **CORS** habilitado en la API (único cambio de backend del paso).
+- Se retiraron `axios` y `swr` del scaffold; se añadió `lucide-react`.
+
+#### ✅ 2. Cliente de API tipado
+- `lib/types.ts`: **DTOs de cable** (el JSON real: sin métodos, fechas como
+  string), reutilizando los tipos puros de `core`.
+- `lib/api.ts`: un único envoltorio de `fetch` que maneja los tres gotchas
+  (4xx/5xx no lanzan, 204 sin body, red caída) y los convierte en `ApiError`
+  —espejo cliente de `DomainError`—.
+
+#### ✅ 3. Estado y navegación
+- `ProfileProvider` (Context + `localStorage`) con hook `useProfile()` y flag
+  `ready`; guardas de navegación por pantalla. Sin Redux. ADR-0019, ADR-0020.
+
+#### ✅ 4-6. Las cinco pantallas
+- **`/setup`**: wizard de 3 pasos. La API es la autoridad: su `ApiError.field`
+  hace saltar al paso correcto y marca el input exacto.
+- **`/profile`**: ver perfil y editar preferencias (lo único que el PATCH permite).
+- **`/bullets`**: CRUD completo con edición inline y borrado en dos clics.
+- **`/tailor`** (la estrella): pegar oferta → generar → preview en tabs →
+  **descarga desde base64** (`atob` → `Uint8Array` → `Blob` → `<a download>`).
+- Primitivas de formulario controladas reutilizadas en las tres pantallas.
+
+#### ✅ 7. Verificación end-to-end
+- Recorrido completo como usuario nuevo, con archivos reales (`%PDF`, `PK\x03\x04`).
+- **Bug encontrado y corregido**: el header ocultaba los enlaces por debajo de
+  `sm`, dejando la app **sin navegación en móvil**. Ninguna prueba unitaria lo
+  habría detectado.
+- Aviso en el resultado: los documentos no se guardan (persistirlos es Fase 3).
+
+#### ✅ 8. Documentación
+- ADRs **0019–0022**; `apps/web/README.md`; este PROGRESS; README raíz actualizado.
+
+### Desarrollo sin créditos de Anthropic
+`USE_FAKE_LLM=true` sustituye **solo** la llamada a Claude; el resto del pipeline
+(perfil, bullets, generación de PDF/DOCX) sigue siendo real. Activar Claude =
+poner la key y el flag en `false`, sin tocar código. ADR-0022.
+
+### Tests
+Sin cambios: **89 verdes** (core 3 · llm 32 · documents 20 · api 34). La web se
+verificó con recorridos reales en navegador, no con tests automatizados (deuda
+consciente: ver abajo).
+
+### Criterio de aceptación de la Fase 1 ✅
+- Crear perfil desde la UI → se guarda en Postgres ✅
+- Añadir bullets → aparecen en el listado ✅
+- Pegar un JD → CV y carta adaptados, con preview y descarga en PDF y DOCX ✅
+- Sin datos inventados: el contenido sale de bullets reales ✅
+
+### ⏳ Deuda conocida y siguientes pasos
+- **`jsonb` double-encoded** en `packages/db`: las columnas JSON se guardan como
+  string, así que SQL no puede consultar dentro. Conviene arreglarlo **antes de
+  la Fase 2** (la Capa 1 del embudo lo necesitará).
+- Sin tests automatizados de la web (React Testing Library / Playwright).
+- RF-04 (importar CV desde Google Docs) sigue pendiente de la Fase 1.
+- Persistir los documentos generados (`DocumentRepository`) → Fase 3.
+- Verificar `/tailor` contra Claude real cuando haya API key.
+
+---
+
+### 🚀 Sprint 5 = COMPLETAMENTE FUNCIONAL · **FASE 1 CERRADA**
