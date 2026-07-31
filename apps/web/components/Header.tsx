@@ -18,16 +18,23 @@ export function Header() {
   return (
     <header className="fixed inset-x-0 top-4 z-50 flex justify-center px-4">
       <nav className="glass flex w-[min(92%,760px)] items-center justify-between rounded-full py-2.5 pl-5 pr-2.5">
-        <Link href="/" className="font-semibold tracking-tight">
-          Job<span className="text-accent">Finder</span>
+        {/* En pantallas estrechas el logo se abrevia a "JF" para dejar sitio a
+            los enlaces: son la ÚNICA navegación, así que nunca se ocultan. */}
+        <Link href="/" className="shrink-0 font-semibold tracking-tight">
+          <span className="sm:hidden">
+            J<span className="text-accent">F</span>
+          </span>
+          <span className="hidden sm:inline">
+            Job<span className="text-accent">Finder</span>
+          </span>
         </Link>
 
-        <div className="hidden items-center gap-1 sm:flex">
+        <div className="flex items-center gap-0.5 sm:gap-1">
           {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className="rounded-full px-3 py-1.5 text-sm text-muted transition hover:text-fg"
+              className="rounded-full px-2 py-1.5 text-sm text-muted transition hover:text-fg sm:px-3"
             >
               {l.label}
             </Link>

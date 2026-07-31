@@ -222,7 +222,14 @@ export default function TailorPage() {
           />
 
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-xl font-semibold tracking-tight">Tus documentos</h2>
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">Tus documentos</h2>
+              {/* Los archivos viven solo en esta pantalla: al recargar se pierden
+                  (persistirlos es Fase 3). Avisar evita perder una generación. */}
+              <p className="mt-1 text-xs text-muted">
+                No se guardan: descárgalos antes de salir de la página.
+              </p>
+            </div>
             <div className="flex flex-wrap gap-2">
               {result.files.map((f) => (
                 <button
