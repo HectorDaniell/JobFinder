@@ -14,13 +14,25 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Job, Profile, Bullet } from '@jobfinder/core';
+import { PromptFileNotFoundError } from './errors';
 
 /** Carpeta donde viven los .txt, relativa a este módulo (CJS: __dirname). */
 const PROMPTS_DIR = join(__dirname, 'prompts');
 
-/** Lee una plantilla .txt del directorio de prompts. */
+/**
+ * Lee una plantilla .txt del directorio de prompts.
+ *
+ * Traducimos el ENOENT crudo a un error de dominio tipado: si los .txt no se
+ * copiaron al dist, el fallo se ve como un 500 con causa explicable en vez de
+ * un "Internal server error" mudo.
+ */
 export function loadPromptFile(fileName: string): string {
-  return readFileSync(join(PROMPTS_DIR, fileName), 'utf-8');
+  const path = join(PROMPTS_DIR, fileName);
+  try {
+    return readFileSync(path, 'utf-8');
+  } catch {
+    throw new PromptFileNotFoundError(fileName, path);
+  }
 }
 
 /**

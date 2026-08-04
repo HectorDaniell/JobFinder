@@ -26,6 +26,7 @@ export {
   MalformedLlmResponseError,
   ProfileHasNoBulletsError,
   GuardrailViolationError,
+  PromptFileNotFoundError,
 } from './errors';
 
 // ---- Motor + costo ----

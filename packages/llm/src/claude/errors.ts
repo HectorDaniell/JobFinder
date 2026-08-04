@@ -85,6 +85,23 @@ export class ProfileHasNoBulletsError extends DomainError {
  * El output del LLM violó los guardrails (p. ej. inventó un bullet).
  * statusCode 422: unprocessable entity (la salida no pasó validación de negocio).
  */
+/**
+ * No se encontró la plantilla de prompt en disco.
+ * statusCode 500: es un fallo de EMPAQUETADO del servidor (los .txt no llegaron
+ * al dist), no algo que el usuario pueda corregir. Ver ADR-0012.
+ */
+export class PromptFileNotFoundError extends DomainError {
+  constructor(fileName: string, path: string) {
+    super(
+      `Prompt template "${fileName}" not found. Expected at: ${path}. ` +
+        'Run the llm package build so the .txt prompts are copied into dist.',
+      'PROMPT_FILE_NOT_FOUND',
+      500
+    );
+    Object.setPrototypeOf(this, PromptFileNotFoundError.prototype);
+  }
+}
+
 export class GuardrailViolationError extends DomainError {
   readonly issues: string[];
   constructor(issues: string[]) {
