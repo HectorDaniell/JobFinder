@@ -40,7 +40,9 @@ export const TailorCoverLetterInputSchema = z.object({
  * El adapter luego mapea esto al `TailoredCv` del core.
  */
 export const ClaudeTailorCvResponseSchema = z.object({
-  selected_bullets: z.array(z.string().min(10)).min(1).max(10),
+  // min 40: un logro de CV es una frase, no un fragmento. Además evita que un
+  // texto muy corto infle el coeficiente de solapamiento del anti-invención.
+  selected_bullets: z.array(z.string().min(40)).min(1).max(10),
   keywords: z.array(z.string().min(2)).min(1).max(20),
   reasoning_summary: z.string().optional(),
 });
@@ -55,12 +57,24 @@ export const TailorCoverLetterSchema = z.string().min(200).max(3000);
 /* ============ 3. ANTI-INVENCIÓN ============ */
 
 /**
- * Verifica que cada bullet devuelto por Claude exista (de forma similar)
- * en el banco autorizado del perfil. Si Claude inventa algo, lo detecta.
+ * Verifica que cada bullet devuelto por Claude PROVENGA del banco autorizado
+ * del perfil. Si Claude inventa algo, lo detecta.
  *
- * Similitud: por ahora usamos Jaccard de tokens (sin dependencias). Es una
- * heurística decente y barata. En Fase 2 se reemplaza por similitud coseno
- * de embeddings (más precisa). La INTERFAZ no cambia, solo la implementación.
+ * Similitud: COEFICIENTE DE SOLAPAMIENTO (contención), |A ∩ B| / min(|A|,|B|).
+ *
+ * Antes usábamos Jaccard (|A ∩ B| / |A ∪ B|), pero es SIMÉTRICO: penaliza que
+ * los textos tengan distinta longitud o vocabulario, que es exactamente lo que
+ * produce una reformulación —justo lo que el prompt le PIDE a Claude—. Medido
+ * con bullets reales, las reformulaciones legítimas caían al 40–50% y algunas
+ * se rechazaban como si fueran inventadas.
+ *
+ * La pregunta correcta no es "¿se parecen?" sino "¿esto SALE de aquello?", y eso
+ * es contención: qué parte del vocabulario del texto más corto aparece en el
+ * otro. Con los mismos datos, las reformulaciones suben a 63–85% mientras que un
+ * bullet inventado sigue en 0%: la separación es mucho más limpia.
+ *
+ * En Fase 2 se reemplaza por similitud coseno de embeddings (más precisa). La
+ * INTERFAZ no cambia, solo la implementación.
  */
 export class BulletOriginValidator {
   static validate(
@@ -74,7 +88,7 @@ export class BulletOriginValidator {
     for (const selected of selectedBullets) {
       let best = 0;
       for (const bullet of authorizedBullets) {
-        const score = BulletOriginValidator.jaccard(selected, bullet.getText(lang));
+        const score = BulletOriginValidator.overlap(selected, bullet.getText(lang));
         if (score > best) best = score;
       }
       if (best < similarityThreshold) {
@@ -89,13 +103,18 @@ export class BulletOriginValidator {
   }
 
   /**
-   * Similitud Jaccard sobre conjuntos de palabras normalizadas.
-   * |A ∩ B| / |A ∪ B|. 1.0 = idénticas, 0.0 = sin palabras en común.
+   * Coeficiente de solapamiento sobre conjuntos de palabras normalizadas.
+   * |A ∩ B| / min(|A|, |B|). 1.0 = el texto corto está contenido en el largo;
+   * 0.0 = sin palabras en común.
    *
-   * Tolera reformulaciones (reordenar/añadir palabras) pero detecta bullets
-   * completamente nuevos (pocas palabras en común → score bajo).
+   * Al dividir por el conjunto MÁS PEQUEÑO, reformular (comprimir, ampliar o
+   * cambiar conectores) no penaliza: lo que mide es cuánto del vocabulario
+   * compartido se conserva. Un bullet inventado no comparte casi nada → ~0.
+   *
+   * Nota: un texto muy corto podría inflar el score (pocos tokens, todos
+   * coincidentes). Lo cubre el mínimo de longitud del schema de salida.
    */
-  private static jaccard(a: string, b: string): number {
+  private static overlap(a: string, b: string): number {
     const setA = BulletOriginValidator.tokenize(a);
     const setB = BulletOriginValidator.tokenize(b);
     if (setA.size === 0 || setB.size === 0) return 0;
@@ -104,8 +123,7 @@ export class BulletOriginValidator {
     for (const token of setA) {
       if (setB.has(token)) intersection++;
     }
-    const union = setA.size + setB.size - intersection;
-    return intersection / union;
+    return intersection / Math.min(setA.size, setB.size);
   }
 
   /** Pasa a minúsculas, quita puntuación y parte en palabras (≥ 3 letras). */

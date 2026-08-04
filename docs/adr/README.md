@@ -43,6 +43,7 @@ pueden "backfillear" como archivos más adelante si hiciera falta.)
 | [0020](0020-estado-context-y-localstorage-sin-redux.md) | Estado: Context + localStorage (sin Redux ni SWR) | Aceptado |
 | [0021](0021-design-tokens-senal-y-tema-claro-oscuro.md) | Design tokens "Señal" y tema claro/oscuro | Aceptado |
 | [0022](0022-llm-falso-para-desarrollo-sin-creditos.md) | LLM falso tras un flag para desarrollar sin créditos | Aceptado (temporal) |
+| [0023](0023-contencion-en-vez-de-jaccard-anti-invencion.md) | Contención en vez de Jaccard en el anti-invención | Aceptado |
 
 ## Cómo agregar uno
 

@@ -21,6 +21,17 @@ describe('BulletOriginValidator (anti-invención)', () => {
     expect(result.issues).toHaveLength(0);
   });
 
+  it('ACEPTA una reformulación LIBRE (regresión: el caso que rompía con Jaccard)', () => {
+    // Reformulación realista: mismo hecho, redactado de cero — comprime, cambia
+    // conectores y sustituye sinónimos. Es lo que el prompt le pide a Claude.
+    // Con Jaccard caía por debajo del umbral y se rechazaba como "inventado".
+    const reformulado = [
+      'Built and maintained a scalable NestJS REST API sustaining 10k requests per second at low latency',
+    ];
+    const result = BulletOriginValidator.validate(reformulado, mockBullets, 'en');
+    expect(result.valid).toBe(true);
+  });
+
   it('RECHAZA un bullet inventado que no está en el banco', () => {
     const inventado = ['Led a team of 50 engineers across three countries'];
     const result = BulletOriginValidator.validate(inventado, mockBullets, 'en');
