@@ -1,6 +1,9 @@
 # JobFinder — Roadmap de implementación (Fase 1: Tailoring)
 
-> Estado: **Planificación detallada** · Fecha inicio: 2026-06-22
+> Estado: **Fase 1 COMPLETADA** (sprints 0–5) · Inicio: 2026-06-22 · Cierre: 2026-07-31
+>
+> Este documento es el **plan** original. Para lo que realmente se construyó y las
+> desviaciones respecto al plan, ver [PROGRESS.md](./PROGRESS.md).
 
 ---
 
@@ -385,18 +388,27 @@ Si tuvieras ayuda, podrías **paralelizar 2 y 3** (LLM + DocGen en paralelo), ah
 ## Criterios de aceptación por fase
 
 ### Fase 1 completa (todos los sprints):
-- [ ] Usuario sin cuenta crea un perfil en 2 minutos
-- [ ] Usuario carga CV existente (Google Docs) o lo escribe manualmente
-- [ ] Usuario pega un JD en textarea
-- [ ] Sistema genera CV adaptado (bullets reales, keywords del JD, ATS-friendly)
-- [ ] Sistema genera cover letter adaptada (en idioma del JD)
-- [ ] Usuario descarga PDF y DOCX
-- [ ] PDF/DOCX no contienen datos inventados (solo bullets del banco)
-- [ ] Tasa de error < 5% (validación, timeouts, edge cases)
+- [x] Usuario sin cuenta crea un perfil en 2 minutos *(wizard de 3 pasos en `/setup`)*
+- [x] Usuario escribe su perfil manualmente
+- [ ] Usuario carga CV existente desde **Google Docs** *(RF-04: no implementado)*
+- [x] Usuario pega un JD en textarea
+- [x] Sistema genera CV adaptado (bullets reales, keywords del JD, ATS-friendly)
+- [x] Sistema genera cover letter adaptada
+- [x] Usuario descarga PDF y DOCX
+- [x] PDF/DOCX no contienen datos inventados (guardrails anti-invención en `llm`)
+- [ ] Tasa de error < 5% *(pendiente de medir en uso real con Claude)*
 
 ### Métrica de éxito:
 - Tiempo inicio a descarga de documentos: **< 10 segundos** (UI + API + Claude + DocGen)
-- Costo por tailor: **< $0.05 USD** (tokens Claude)
+  → *pendiente de medir contra Claude real; con el LLM falso es < 1 s.*
+- Costo por tailor: **< $0.05 USD** (tokens Claude) → *pendiente de medir.*
+
+### Desviaciones respecto al plan
+- **PDF**: se usó `pdfkit` en vez de Puppeteer (ADR-0014) → sin Chromium.
+- **Plantillas**: no se usó Handlebars/HTML; se introdujo un modelo intermedio
+  neutral al formato (ADR-0015).
+- **Tests e2e de la API**: `app.inject()` de Fastify en vez de Supertest.
+- **`DocumentRepository`** (persistir los archivos generados) se difirió a la Fase 3.
 
 ---
 

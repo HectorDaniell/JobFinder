@@ -16,6 +16,7 @@ Siguiente: **Fase 2** (ingesta desde Gmail y APIs de bolsas + embudo de matching
 
 - 📄 [Documento de Producto (PRD)](./docs/PRD.md)
 - 🏗️ [Arquitectura Técnica](./docs/ARQUITECTURA.md)
+- 🔄 [Cómo funciona, de punta a punta](./docs/FLUJO.md) — diagramas del flujo completo
 - 🗺️ [Roadmap](./docs/ROADMAP.md) · 📈 [Progreso](./docs/PROGRESS.md) · 🧭 [Decisiones (ADR)](./docs/adr/README.md)
 
 ## Estructura

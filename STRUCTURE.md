@@ -1,165 +1,97 @@
 # Project Structure
 
+> Estructura **real** del repositorio (actualizada al cierre de la Fase 1).
+> Lo marcado con ⬜ existe como carpeta/esqueleto pero se implementa en fases futuras.
+
 ```
 jobfinder/
 ├── docs/
-│   ├── PRD.md                      # Product requirements
-│   ├── ARQUITECTURA.md             # Technical architecture
-│   └── SETUP.md                    # Installation guide
+│   ├── PRD.md              # Qué se construye y por qué (requisitos)
+│   ├── ARQUITECTURA.md     # Diseño técnico (hexagonal, etapas, datos)
+│   ├── ROADMAP.md          # Plan por sprints
+│   ├── PROGRESS.md         # Log de lo realmente construido  ← estado actual
+│   ├── FLUJO.md            # Diagramas: el recorrido completo end-to-end
+│   ├── SETUP.md            # Instalación y puesta en marcha
+│   └── adr/                # Architecture Decision Records (0009–0022)
 │
 ├── apps/
-│   ├── api/                        # REST backend (NestJS + Fastify)
+│   ├── api/                        # REST API (NestJS + Fastify) — adaptador de ENTRADA
 │   │   ├── src/
-│   │   │   ├── app.module.ts
-│   │   │   ├── main.ts
-│   │   │   └── modules/
-│   │   │       ├── jobs/
-│   │   │       ├── profiles/
-│   │   │       └── applications/
-│   │   ├── package.json
-│   │   └── tsconfig.json
+│   │   │   ├── main.ts             # bootstrap (Fastify, CORS, .env)
+│   │   │   ├── app.module.ts       # módulo raíz + filtro global de errores
+│   │   │   ├── infra/              # COMPOSITION ROOT: construye los adapters
+│   │   │   │   ├── infra.module.ts
+│   │   │   │   ├── lazy-llm.ts     # Claude perezoso (arranca sin API key)
+│   │   │   │   └── fake-llm.ts     # doble de desarrollo (USE_FAKE_LLM)
+│   │   │   ├── common/
+│   │   │   │   ├── pipes/          # ZodValidationPipe (valida la entrada)
+│   │   │   │   └── filters/        # DomainExceptionFilter (errores → HTTP)
+│   │   │   ├── profiles/           # CRUD de perfil
+│   │   │   ├── bullets/            # CRUD de bullets (anidado bajo perfil)
+│   │   │   ├── tailor/             # POST /profiles/:id/tailor
+│   │   │   └── health/
+│   │   ├── tests/                  # unitarios + e2e (34)
+│   │   └── README.md
 │   │
-│   ├── worker/                     # Async job processor (NestJS + BullMQ)
-│   │   ├── src/
-│   │   │   ├── app.module.ts
-│   │   │   ├── main.ts
-│   │   │   └── processors/
-│   │   │       ├── ingest.processor.ts
-│   │   │       ├── score.processor.ts
-│   │   │       └── tailor.processor.ts
-│   │   ├── package.json
-│   │   └── tsconfig.json
+│   ├── web/                        # UI (Next.js 14, App Router)
+│   │   ├── app/
+│   │   │   ├── layout.tsx          # punto de entrada: html, fuentes, header, Context
+│   │   │   ├── page.tsx            # landing
+│   │   │   ├── setup/              # alta de perfil (wizard 3 pasos)
+│   │   │   ├── tailor/             # pantalla estrella: oferta → CV/carta → descarga
+│   │   │   ├── bullets/            # banco de bullets (CRUD)
+│   │   │   └── profile/            # ver perfil / editar preferencias
+│   │   ├── components/
+│   │   │   ├── ui/                 # primitivas de formulario controladas
+│   │   │   ├── ProfileProvider.tsx # Context del profileId
+│   │   │   └── Header.tsx · ThemeToggle.tsx · BulletForm.tsx · PreferencesFields.tsx
+│   │   ├── lib/                    # api.ts (cliente HTTP) · types.ts · download.ts
+│   │   └── README.md
 │   │
-│   └── web/                        # Frontend (Next.js)
-│       ├── app/
-│       │   ├── page.tsx            # Landing
-│       │   ├── setup/              # Onboarding
-│       │   ├── dashboard/          # Main UI
-│       │   └── api/                # API routes
-│       ├── components/
-│       ├── lib/
-│       ├── public/
-│       ├── package.json
-│       └── tsconfig.json
+│   └── worker/  ⬜                 # colas BullMQ para ingesta programada (Fase 2)
+│       └── src/                    # solo esqueleto: main.ts + app.module.ts
 │
 ├── packages/
-│   ├── core/                       # Domain logic (NO framework dependencies)
+│   ├── core/                       # DOMINIO — no depende de nadie
 │   │   ├── src/
-│   │   │   ├── domain/
-│   │   │   │   ├── entities/
-│   │   │   │   │   ├── Profile.ts
-│   │   │   │   │   ├── Job.ts
-│   │   │   │   │   └── Bullet.ts
-│   │   │   │   └── value-objects/
-│   │   │   │       └── JobScore.ts
-│   │   │   ├── ports/
-│   │   │   │   ├── JobSourcePort.ts
-│   │   │   │   ├── LlmPort.ts
-│   │   │   │   └── EmbedderPort.ts
-│   │   │   ├── errors/
-│   │   │   │   └── DomainError.ts
-│   │   │   └── index.ts            # Barrel export
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   └── README.md
+│   │   │   ├── domain/entities/    # Profile · Job · Bullet
+│   │   │   ├── domain/value-objects/  # JobScore
+│   │   │   ├── ports/              # LlmPort · DocumentPort · JobSourcePort · EmbedderPort
+│   │   │   ├── use-cases/          # TailorDocuments
+│   │   │   ├── errors/             # DomainError y subclases (con statusCode HTTP)
+│   │   │   └── index.ts            # barrel
+│   │   └── tests/
 │   │
-│   ├── db/                         # Database (Drizzle ORM)
-│   │   ├── src/
-│   │   │   ├── schema.ts           # Table definitions
-│   │   │   ├── repositories/       # Implementations of core ports
-│   │   │   ├── migrations/         # SQL migrations
-│   │   │   └── index.ts
-│   │   ├── scripts/
-│   │   │   └── migrate.ts          # Migration runner
-│   │   ├── drizzle.config.ts       # Drizzle CLI config
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   └── README.md
+│   ├── db/                         # Drizzle + Postgres (adaptador de SALIDA)
+│   │   ├── src/schema.ts           # 10 tablas
+│   │   ├── src/repositories/       # Profile · Bullet · Job · JobScore
+│   │   └── scripts/                # migrate.js · seed.ts
 │   │
-│   ├── shared/                     # Shared types & schemas
-│   │   ├── src/
-│   │   │   ├── types/
-│   │   │   ├── schemas/
-│   │   │   └── utils/
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   └── README.md
+│   ├── llm/                        # Claude (adaptador de SALIDA)
+│   │   └── src/claude/             # client · adapter · guardrails · prompts/*.txt
 │   │
-│   ├── sources/                    # Job source adapters
-│   │   ├── src/
-│   │   │   ├── gmail/              # Gmail adapter
-│   │   │   ├── getonboard/         # GetOnBoard adapter
-│   │   │   ├── remotive/           # Remotive adapter
-│   │   │   ├── adzuna/             # Adzuna adapter
-│   │   │   └── index.ts
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   └── README.md
+│   ├── documents/                  # PDF/DOCX ATS-friendly (adaptador de SALIDA)
+│   │   └── src/                    # model/ (mappers puros) · exporters/ · adapter.ts
 │   │
-│   ├── llm/                        # Claude & embeddings adapters
-│   │   ├── src/
-│   │   │   ├── claude/             # Claude API adapter
-│   │   │   │   ├── client.ts       # Anthropic SDK wrapper
-│   │   │   │   ├── prompts/
-│   │   │   │   └── guardrails.ts
-│   │   │   ├── embeddings/         # Voyage AI or local embeddings
-│   │   │   │   ├── voyage.ts
-│   │   │   │   └── local.ts
-│   │   │   └── index.ts
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   └── README.md
-│   │
-│   └── documents/                  # CV/cover letter generation
-│       ├── src/
-│       │   ├── generators/
-│       │   │   ├── cv.generator.ts
-│       │   │   └── cover.generator.ts
-│       │   ├── templates/
-│       │   │   ├── cv-template.html
-│       │   │   └── cover-template.html
-│       │   ├── exporters/
-│       │   │   ├── pdf.exporter.ts (Puppeteer)
-│       │   │   └── docx.exporter.ts
-│       │   └── index.ts
-│       ├── package.json
-│       ├── tsconfig.json
-│       └── README.md
+│   ├── sources/  ⬜                # adapters de fuentes de vacantes (Fase 2)
+│   │                               # Gmail · GetOnBoard · Remotive · Adzuna
+│   └── shared/   ⬜                # utilidades comunes (vacío por ahora)
 │
-├── .env.example                    # Template for .env
-├── .eslintrc.js
-├── .prettierrc
-├── .gitignore
-├── docker-compose.yml              # Local dev: Postgres + Redis
-├── docker-compose.prod.yml         # Production (optional)
-├── pnpm-workspace.yaml             # Monorepo config
-├── package.json                    # Root scripts
-├── tsconfig.json                   # Base TS config
-├── README.md
-├── STRUCTURE.md                    # This file
-└── SETUP.md                        # Installation guide
+├── docker-compose.yml              # Postgres 16 (:5433) + Redis (:6379)
+├── pnpm-workspace.yaml             # workspaces + allowBuilds (supply-chain)
+└── .env / .env.example
 ```
 
-## Key Design Principles
+## La regla que ordena todo
 
-### Hexagonal (Ports & Adapters)
-- **Core** defines what it needs (ports).
-- **Adapters** implement those ports.
-- **Apps** compose and orchestrate.
+```
+apps/*        →  pueden importar cualquier package
+packages/db, llm, documents  →  importan SOLO core
+packages/core →  no importa nada del proyecto (solo zod)
+```
 
-### Monorepo with pnpm workspaces
-- Shared types and utilities via `@jobfinder/*` imports.
-- Each package is independently buildable and testable.
-- Dependency graph: `core` → `db`, `sources`, `llm`, `documents` → `api`, `worker`, `web`.
+No es disciplina: es **física**. `core` no lista ningún `@jobfinder/*` en su
+`package.json`, así que pnpm no le resolvería el import aunque se intentara.
 
-### Local-first
-- All data lives in local Postgres (via Docker).
-- No cloud services for user data.
-- External APIs only for LLM (Claude), embeddings (Voyage), and OAuth (Google).
-
-## Getting Started
-
-1. Read [SETUP.md](./SETUP.md) to install and run locally.
-2. Read [docs/PRD.md](./docs/PRD.md) for product context.
-3. Read [docs/ARQUITECTURA.md](./docs/ARQUITECTURA.md) for technical details.
-4. Start with **Fase 1** (profile + tailoring in `apps/api` and `packages/documents`).
+El framework (NestJS) vive **solo** en `apps/api`; Next.js **solo** en `apps/web`.
+Los packages son agnósticos y reutilizables por el futuro `worker`.

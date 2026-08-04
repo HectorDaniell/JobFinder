@@ -2,6 +2,24 @@
 
 > Fecha de inicio: 2026-06-22 · Última actualización: 2026-07-31
 
+## 📍 Estado actual
+
+**Fase 1 (Tailoring) COMPLETA** — flujo funcionando de punta a punta: crear perfil →
+banco de bullets → pegar una oferta → descargar CV y carta en PDF/DOCX, sin datos
+inventados.
+
+| Sprint | Estado |
+|---|---|
+| 0 Setup · 1 Repos+BD · 2 Claude · 3 DocGen · 4 API · 5 Web | ✅ completos |
+| **Fase 2** — Ingesta (Gmail + APIs de bolsas) + Matching | ⬜ siguiente |
+| Fase 3 — Postulación + Tracking · Fase 4 — Aprendizaje | ⬜ |
+
+- **Tests:** 89 verdes (core 3 · llm 32 · documents 20 · api 34).
+- **Deuda a resolver antes de la Fase 2:** `jsonb` double-encoded en `packages/db`
+  (ver Sesión 7).
+- El detalle de cada sprint está más abajo, en orden cronológico (este archivo es
+  un **log**: las secciones antiguas se conservan como historia, no como estado).
+
 ---
 
 ## Sprint 0 — Setup inicial ✅ COMPLETADO
@@ -90,9 +108,9 @@
 
 ---
 
-## Estado actual (POST Sprint 1)
+## Estado tras el Sprint 1 *(histórico — ver "Estado actual" arriba)*
 
-### ✅ Lo que está listo
+### ✅ Lo que estaba listo entonces
 - ✅ Sprint 0: Entorno, Docker, monorepo, core domain
 - ✅ Sprint 1: Repositorios + BD + migraciones + seed
   - ProfileRepository, BulletRepository, JobRepository implementados
@@ -102,8 +120,8 @@
 - Docker Postgres + Redis corriendo
 - Type-checking pasan 100%
 
-### ⏳ Lo que sigue
-- **Sprint 2:** Adapter de Claude (tailorCv, tailorCoverLetter) ← EN PLANNING
+### ⏳ Lo que seguía entonces *(ya completado: sprints 2 a 5)*
+- **Sprint 2:** Adapter de Claude (tailorCv, tailorCoverLetter)
 - **Sprint 3:** Generador de documentos (PDF, DOCX)
 - **Sprint 4:** REST API (NestJS)
 - **Sprint 5:** Frontend (Next.js)
@@ -184,14 +202,11 @@ Ambas funcionan. Opción A es más clara para desarrollo.
 `pnpm run migrate` se ejecuta **una sola vez** (crea las tablas). No lo repites mañana.
 Solo la vuelves a ejecutar si borraste la BD o hay nuevas migraciones en el repo.
 
-## Próxima sesión
+## Próxima sesión *(nota histórica del Sprint 0)*
 
-Al iniciar la próxima sesión:
 1. `docker compose up -d` para traer la BD online
 2. `pnpm install` (debería estar en cache, es rápido)
 3. Continuar con **Sprint 1: Repositorios**
-
-Tiempo estimado Sprint 0 next run: < 1 minuto (solo levantar Docker).
 
 ---
 
