@@ -14,6 +14,7 @@ export class BulletRepository {
     const dbInsert: DbBulletInsert = {
       id: bullet.id,
       profileId: bullet.profileId,
+      experienceId: bullet.experienceId,
       textEs: bullet.textEs,
       textEn: bullet.textEn,
       skills: bullet.skills,
@@ -54,6 +55,7 @@ export class BulletRepository {
     const updated = await this.db
       .update(schema.bullet)
       .set({
+        experienceId: bullet.experienceId ?? null, // null explícito: se desvinculó
         textEs: bullet.textEs,
         textEn: bullet.textEn,
         skills: bullet.skills,
@@ -88,6 +90,7 @@ export class BulletRepository {
     return new Bullet({
       id: row.id,
       profileId: row.profileId,
+      experienceId: row.experienceId ?? undefined,
       textEs: row.textEs,
       textEn: row.textEn,
       skills: row.skills ?? [],

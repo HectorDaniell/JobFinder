@@ -27,6 +27,27 @@ export const profile = pgTable('profile', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// ============ Experience (a job held: gives bullets their context) ============
+export const experience = pgTable(
+  'experience',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profile.id, { onDelete: 'cascade' }),
+    company: text('company').notNull(),
+    role: text('role').notNull(),
+    location: text('location'),
+    startDate: timestamp('start_date').notNull(),
+    endDate: timestamp('end_date'), // null = still working here
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    profileIdIdx: index('experience_profile_id_idx').on(table.profileId),
+  })
+);
+
 // ============ Bullet (resume bullets/achievements) ============
 export const bullet = pgTable(
   'bullet',
@@ -35,6 +56,11 @@ export const bullet = pgTable(
     profileId: uuid('profile_id')
       .notNull()
       .references(() => profile.id, { onDelete: 'cascade' }),
+    // Nullable: project and education bullets belong to no employer. On delete
+    // we only unlink (SET NULL) — losing a job must never delete the achievement.
+    experienceId: uuid('experience_id').references(() => experience.id, {
+      onDelete: 'set null',
+    }),
     textEs: text('text_es').notNull(),
     textEn: text('text_en').notNull(),
     skills: text('skills').array(), // Array of skill tags

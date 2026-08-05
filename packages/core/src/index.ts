@@ -1,6 +1,7 @@
 // Entities
 export { Profile, PreferenceSchema, type Preferences } from './domain/entities/Profile';
 export { Bullet } from './domain/entities/Bullet';
+export { Experience } from './domain/entities/Experience';
 export { Job, type JobSeniority, type JobModality } from './domain/entities/Job';
 
 // Value Objects

@@ -11,7 +11,9 @@ export class Bullet {
   readonly textEn: string;
   readonly skills: string[];
   readonly category: 'experience' | 'achievement' | 'project' | 'education';
-  readonly sourceRole?: string; // The role/context where this bullet was originally used
+  /** The job this happened at. Undefined for personal projects and education. */
+  readonly experienceId?: string;
+  readonly sourceRole?: string; // Free-text context, for bullets with no linked experience
   readonly metrics?: Record<string, string | number>;
   readonly createdAt: Date;
   readonly updatedAt: Date;
@@ -23,6 +25,7 @@ export class Bullet {
     textEn: string;
     skills: string[];
     category: 'experience' | 'achievement' | 'project' | 'education';
+    experienceId?: string;
     sourceRole?: string;
     metrics?: Record<string, string | number>;
     createdAt: Date;
@@ -34,6 +37,7 @@ export class Bullet {
     this.textEn = data.textEn;
     this.skills = data.skills;
     this.category = data.category;
+    this.experienceId = data.experienceId;
     this.sourceRole = data.sourceRole;
     this.metrics = data.metrics;
     this.createdAt = data.createdAt;
