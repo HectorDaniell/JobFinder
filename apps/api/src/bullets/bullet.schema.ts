@@ -9,6 +9,8 @@ import { z } from 'zod';
  */
 
 export const CreateBulletSchema = z.object({
+  /** Empleo al que pertenece. null/ausente = proyecto personal o educación. */
+  experienceId: z.string().uuid().nullish(),
   textEs: z.string().min(1),
   textEn: z.string().min(1),
   skills: z.array(z.string()),

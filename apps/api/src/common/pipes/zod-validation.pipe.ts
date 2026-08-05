@@ -17,13 +17,20 @@
  */
 
 import { PipeTransform } from '@nestjs/common';
-import { ZodSchema } from 'zod';
+import type { ZodType, ZodTypeDef } from 'zod';
 import { ValidationError } from '@jobfinder/core';
 
-export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
-  constructor(private readonly schema: ZodSchema<T>) {}
+/**
+ * Dos parámetros de tipo, no uno: un schema Zod puede TRANSFORMAR (p. ej.
+ * recibir "2025-04" y devolver un Date), así que la entrada y la salida no
+ * tienen por qué coincidir. Con un solo genérico, esos schemas no compilaban.
+ */
+export class ZodValidationPipe<TOutput, TInput = unknown>
+  implements PipeTransform<unknown, TOutput>
+{
+  constructor(private readonly schema: ZodType<TOutput, ZodTypeDef, TInput>) {}
 
-  transform(value: unknown): T {
+  transform(value: unknown): TOutput {
     // safeParse NO lanza: devuelve { success, data | error }. Así controlamos
     // nosotros el error y emitimos nuestro ValidationError en vez del ZodError.
     const result = this.schema.safeParse(value);

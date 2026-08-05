@@ -4,6 +4,7 @@ import { InfraModule } from './infra/infra.module';
 import { HealthController } from './health/health.controller';
 import { ProfilesModule } from './profiles/profiles.module';
 import { BulletsModule } from './bullets/bullets.module';
+import { ExperiencesModule } from './experiences/experiences.module';
 import { TailorModule } from './tailor/tailor.module';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
 
@@ -14,7 +15,7 @@ import { DomainExceptionFilter } from './common/filters/domain-exception.filter'
  * ejecutan main.ts—. Una sola fuente de verdad para el manejo de errores.
  */
 @Module({
-  imports: [InfraModule, ProfilesModule, BulletsModule, TailorModule],
+  imports: [InfraModule, ProfilesModule, BulletsModule, ExperiencesModule, TailorModule],
   controllers: [HealthController],
   providers: [{ provide: APP_FILTER, useClass: DomainExceptionFilter }],
 })

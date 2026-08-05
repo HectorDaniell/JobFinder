@@ -11,7 +11,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { Bullet, NotFoundError } from '@jobfinder/core';
-import { BulletRepository, ProfileRepository } from '@jobfinder/db';
+import { BulletRepository, ProfileRepository, ExperienceRepository } from '@jobfinder/db';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import {
   CreateBulletSchema,
@@ -36,7 +36,8 @@ import {
 export class BulletsController {
   constructor(
     @Inject(BulletRepository) private readonly bullets: BulletRepository,
-    @Inject(ProfileRepository) private readonly profiles: ProfileRepository
+    @Inject(ProfileRepository) private readonly profiles: ProfileRepository,
+    @Inject(ExperienceRepository) private readonly experiences: ExperienceRepository
   ) {}
 
   @Post()
@@ -48,10 +49,12 @@ export class BulletsController {
     // limpio en vez de dejar reventar la foreign key como 500.
     const profile = await this.profiles.findById(profileId);
     if (!profile) throw new NotFoundError('Profile', profileId);
+    await this.assertExperienceOwned(profileId, dto.experienceId);
 
     const now = new Date();
     const bullet = new Bullet({
       ...dto,
+      experienceId: dto.experienceId ?? undefined, // null (JSON) -> sin empleo
       id: randomUUID(),
       profileId,
       createdAt: now,
@@ -81,12 +84,19 @@ export class BulletsController {
     @Body(new ZodValidationPipe(UpdateBulletSchema)) dto: UpdateBulletDto
   ): Promise<Bullet> {
     const existing = await this.getOwned(profileId, id);
+    await this.assertExperienceOwned(profileId, dto.experienceId);
 
     // update() del repo recibe la entidad COMPLETA: partimos del bullet
     // existente y sobreescribimos solo los campos que llegaron en el PATCH.
+    // experienceId tiene tres estados: ausente = no tocar, null = desvincular,
+    // uuid = enlazar.
+    const experienceId =
+      dto.experienceId === undefined ? existing.experienceId : (dto.experienceId ?? undefined);
+
     const updated = new Bullet({
       ...existing,
       ...dto,
+      experienceId,
       updatedAt: new Date(),
     });
 
@@ -101,6 +111,22 @@ export class BulletsController {
   ): Promise<void> {
     await this.getOwned(profileId, id); // 404 si no existe o no pertenece
     await this.bullets.delete(id);
+  }
+
+  /**
+   * Si se enlaza una experiencia, debe existir y ser del MISMO perfil. Sin esto,
+   * un id ajeno reventaría como violación de FK (500) o —peor— colgaría el
+   * bullet del empleo de otra persona.
+   */
+  private async assertExperienceOwned(
+    profileId: string,
+    experienceId: string | null | undefined
+  ): Promise<void> {
+    if (!experienceId) return; // null/ausente: no pertenece a ningún empleo
+    const experience = await this.experiences.findById(experienceId);
+    if (!experience || experience.profileId !== profileId) {
+      throw new NotFoundError('Experience', experienceId);
+    }
   }
 
   /**

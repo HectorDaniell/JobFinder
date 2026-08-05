@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { db, ProfileRepository, BulletRepository } from '@jobfinder/db';
+import { db, ProfileRepository, BulletRepository, ExperienceRepository } from '@jobfinder/db';
 import { DocumentAdapter } from '@jobfinder/documents';
 import { TailorDocuments } from '@jobfinder/core';
 import { createLazyLlm } from './lazy-llm';
@@ -27,6 +27,7 @@ import { createFakeLlm } from './fake-llm';
   providers: [
     { provide: ProfileRepository, useFactory: () => new ProfileRepository(db) },
     { provide: BulletRepository, useFactory: () => new BulletRepository(db) },
+    { provide: ExperienceRepository, useFactory: () => new ExperienceRepository(db) },
     { provide: DocumentAdapter, useFactory: () => new DocumentAdapter() },
     {
       provide: TailorDocuments,
@@ -43,6 +44,6 @@ import { createFakeLlm } from './fake-llm';
       inject: [ProfileRepository, BulletRepository, DocumentAdapter],
     },
   ],
-  exports: [ProfileRepository, BulletRepository, TailorDocuments],
+  exports: [ProfileRepository, BulletRepository, ExperienceRepository, TailorDocuments],
 })
 export class InfraModule {}
