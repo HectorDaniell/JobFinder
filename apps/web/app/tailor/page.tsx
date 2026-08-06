@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Download, FileText, Loader2, Sparkles } from 'lucide-react';
+import { FileText, Loader2, Sparkles } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
-import { downloadBase64File } from '../../lib/download';
 import type { DocFormat, TailorInput, TailorResponseDto } from '../../lib/types';
 import { useProfile } from '../../components/ProfileProvider';
 import { Input, Textarea, Select, CheckboxGroup } from '../../components/ui/fields';
+import { DownloadButton } from '../../components/DownloadButton';
+import { TailorSkeleton } from '../../components/TailorSkeleton';
 
 const LANGS = [
   { value: 'es', label: 'Español' },
@@ -201,16 +202,14 @@ export default function TailorPage() {
             {loading ? 'Generando…' : 'Generar CV y carta'}
           </button>
         </div>
-
-        {loading && (
-          <p className="mt-4 text-right text-xs text-muted">
-            Adaptando el contenido y creando los archivos. Suele tardar unos segundos.
-          </p>
-        )}
       </section>
 
       {/* ---------------- Errores con acción ---------------- */}
       {error && <ErrorPanel error={error} />}
+
+      {/* Mientras Claude responde, el resultado se dibuja en hueco: reserva su
+          sitio exacto, así que al llegar los datos no hay salto de layout. */}
+      {loading && <TailorSkeleton />}
 
       {/* ---------------- Resultado ---------------- */}
       {result && (
@@ -232,15 +231,7 @@ export default function TailorPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {result.files.map((f) => (
-                <button
-                  key={f.filename}
-                  type="button"
-                  className="btn-ghost inline-flex items-center gap-1.5"
-                  onClick={() => downloadBase64File(f)}
-                >
-                  <Download size={14} />
-                  <span className="font-mono text-xs">{f.filename}</span>
-                </button>
+                <DownloadButton key={f.filename} file={f} />
               ))}
             </div>
           </div>
@@ -280,14 +271,17 @@ export default function TailorPage() {
                   {result.cv.bullets.map((b, i) => (
                     <li key={i} className="flex gap-2.5 text-sm leading-relaxed">
                       <FileText size={14} className="mt-1 shrink-0 text-accent" />
-                      <span>{b}</span>
+                      <span>{b.text}</span>
                     </li>
                   ))}
                 </ul>
 
+                {/* Ya no son las keywords que extrae el LLM leyendo la oferta,
+                    sino las skills que el usuario curó en sus bullets, ordenadas
+                    por relevancia para ESTA vacante (ver TailorDocuments). */}
                 {result.cv.keywords.length > 0 && (
                   <>
-                    <h3 className="mt-6 text-sm font-medium text-muted">Keywords alineadas</h3>
+                    <h3 className="mt-6 text-sm font-medium text-muted">Habilidades</h3>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {result.cv.keywords.map((k) => (
                         <span key={k} className="chip-accent font-mono">

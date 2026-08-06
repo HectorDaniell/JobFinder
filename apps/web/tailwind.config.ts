@@ -25,6 +25,19 @@ export default {
         sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-jetbrains)', 'ui-monospace', 'monospace'],
       },
+      // Barra de carga INDETERMINADA: un segmento cruza el carril en bucle. Sin
+      // porcentaje, porque el front no puede saber cuánto le falta a Claude
+      // (ver TailorSkeleton). El recorrido va de -100% a 300% porque el
+      // segmento mide 1/3 del carril: así entra y sale del todo por los bordes.
+      keyframes: {
+        indeterminate: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(300%)' },
+        },
+      },
+      animation: {
+        indeterminate: 'indeterminate 1.4s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

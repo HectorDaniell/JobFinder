@@ -70,6 +70,7 @@ export interface BulletDto {
 export interface TailorFileDto {
   filename: string;
   mimeType: string;
+  kind: 'cv' | 'cover'; // qué documento es, sin tener que leer el filename
   base64: string; // los bytes del PDF/DOCX, serializados para viajar en JSON
 }
 
