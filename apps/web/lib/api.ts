@@ -14,6 +14,9 @@
 import type {
   ProfileDto,
   BulletDto,
+  ExperienceDto,
+  CreateExperienceInput,
+  UpdateExperienceInput,
   TailorResponseDto,
   CreateProfileInput,
   CreateBulletInput,
@@ -115,6 +118,28 @@ export const api = {
   deleteBullet: (profileId: string, bulletId: string) =>
     request<void>(
       `/profiles/${encodeURIComponent(profileId)}/bullets/${encodeURIComponent(bulletId)}`,
+      { method: 'DELETE' }
+    ),
+
+  // ---- Experiences (empleos: dan contexto a los bullets) ----
+  listExperiences: (profileId: string) =>
+    request<ExperienceDto[]>(`/profiles/${encodeURIComponent(profileId)}/experiences`),
+
+  createExperience: (profileId: string, input: CreateExperienceInput) =>
+    request<ExperienceDto>(`/profiles/${encodeURIComponent(profileId)}/experiences`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  updateExperience: (profileId: string, experienceId: string, input: UpdateExperienceInput) =>
+    request<ExperienceDto>(
+      `/profiles/${encodeURIComponent(profileId)}/experiences/${encodeURIComponent(experienceId)}`,
+      { method: 'PATCH', body: JSON.stringify(input) }
+    ),
+
+  deleteExperience: (profileId: string, experienceId: string) =>
+    request<void>(
+      `/profiles/${encodeURIComponent(profileId)}/experiences/${encodeURIComponent(experienceId)}`,
       { method: 'DELETE' }
     ),
 

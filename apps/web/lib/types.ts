@@ -41,9 +41,22 @@ export interface ProfileDto {
   updatedAt: string;
 }
 
+export interface ExperienceDto {
+  id: string;
+  profileId: string;
+  company: string;
+  role: string;
+  location?: string;
+  startDate: string; // ISO
+  endDate?: string; // ausente = sigue trabajando ahí
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface BulletDto {
   id: string;
   profileId: string;
+  experienceId?: string;
   textEs: string;
   textEn: string;
   skills: string[];
@@ -78,7 +91,19 @@ export interface CreateProfileInput {
   preferences: Preferences;
 }
 
+/** Las fechas se envían como "YYYY-MM": es lo único que un CV necesita. */
+export interface CreateExperienceInput {
+  company: string;
+  role: string;
+  location?: string;
+  startDate: string; // "2025-04"
+  endDate?: string | null; // null = sigue trabajando ahí
+}
+
+export type UpdateExperienceInput = Partial<CreateExperienceInput>;
+
 export interface CreateBulletInput {
+  experienceId?: string | null;
   textEs: string;
   textEn: string;
   skills: string[];
