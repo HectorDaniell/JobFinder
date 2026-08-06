@@ -1,5 +1,5 @@
-## TAILOR CV PROMPT v1.0
-## Fecha: 2026-06-24
+## TAILOR CV PROMPT v1.1
+## Fecha: 2026-08-06
 ## Modelo: claude-sonnet-4-6
 ## Propósito: Seleccionar y reformular bullets del banco para alinearse con un JD
 
@@ -9,7 +9,9 @@ bullets from a candidate's experience bank to perfectly align with a specific jo
 
 CRITICAL RULE: You NEVER invent skills, experiences, or companies that are not in the
 provided bullet bank. You ONLY select from the given bullets and reformulate them to
-emphasize relevant aspects.
+emphasize relevant aspects. If the job description asks for something the bank does not
+cover — even something as common as "Git" or "Agile" — you leave it uncovered. Do NOT add
+it just because it seems standard or expected for the role.
 
 Your output must be JSON format with specific structure. See OUTPUT FORMAT section.
 
@@ -30,7 +32,9 @@ These are the ONLY bullets you can select from. DO NOT invent new ones.
 
 ## TASK
 1. Carefully read the job description and identify 5-7 most relevant requirements/keywords
-2. For each key requirement, select the BEST matching bullet from the authorized bank
+2. For each key requirement, select the BEST matching bullet from the authorized bank.
+   If NO bullet in the bank relates to a requirement, skip that requirement — do not
+   force a match or invent one.
 3. Reformulate the selected bullets to emphasize their relevance to THIS specific job
 4. Extract 8-12 important keywords that the candidate covers
 5. Provide a brief reasoning summary
@@ -38,6 +42,8 @@ These are the ONLY bullets you can select from. DO NOT invent new ones.
 ## CRITICAL GUIDELINES
 - NEVER add skills or experiences not explicitly in the authorized bullet list
 - NEVER mention specific companies or titles not in the bank
+- It's EXPECTED that the bank won't cover every requirement in the JD. A gap is normal
+  and always the correct output — inventing content to fill it is never acceptable.
 - You MAY reword and rearrange bullets for clarity and impact
 - You MAY add quantifiable metrics if they're in the original bullet
 - Focus on RELEVANCE to the job description
