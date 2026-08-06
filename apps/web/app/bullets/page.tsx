@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { Briefcase, Loader2, Pencil, Plus } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
-import type { BulletDto, CreateBulletInput } from '../../lib/types';
+import type { BulletDto, CreateBulletInput, ExperienceDto } from '../../lib/types';
+import { formatPeriod } from '../../lib/dates';
 import { useProfile } from '../../components/ProfileProvider';
 import { BulletForm, CATEGORY_OPTIONS } from '../../components/BulletForm';
+import { DeleteButton } from '../../components/ui/DeleteButton';
 
 const CATEGORY_LABEL = Object.fromEntries(
   CATEGORY_OPTIONS.map((o) => [o.value, o.label])
@@ -26,6 +29,7 @@ export default function BulletsPage() {
   const { profileId, ready } = useProfile();
 
   const [bullets, setBullets] = useState<BulletDto[] | null>(null); // null = cargando
+  const [experiences, setExperiences] = useState<ExperienceDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false); // ¿formulario de alta visible?
   const [editingId, setEditingId] = useState<string | null>(null); // ¿qué card está en edición?
@@ -38,11 +42,15 @@ export default function BulletsPage() {
       return;
     }
     let cancelled = false;
-    api
-      .listBullets(profileId)
-      .then((list) => !cancelled && setBullets(list))
-      .catch((e) => !cancelled && setError(e instanceof ApiError ? e.message : 'Error inesperado'))
-      .finally(() => undefined);
+    // Las experiencias se cargan a la vez: el formulario las necesita para el
+    // selector y las cards para mostrar de qué empleo viene cada logro.
+    Promise.all([api.listBullets(profileId), api.listExperiences(profileId)])
+      .then(([list, exp]) => {
+        if (cancelled) return;
+        setBullets(list);
+        setExperiences(exp);
+      })
+      .catch((e) => !cancelled && setError(e instanceof ApiError ? e.message : 'Error inesperado'));
     return () => {
       cancelled = true;
     };
@@ -137,6 +145,7 @@ export default function BulletsPage() {
         <div className="card mt-6 p-6">
           <h2 className="mb-5 text-lg font-semibold tracking-tight">Nuevo bullet</h2>
           <BulletForm
+            experiences={experiences}
             saving={saving}
             onSubmit={handleCreate}
             onCancel={() => setCreating(false)}
@@ -171,6 +180,7 @@ export default function BulletsPage() {
             {editingId === b.id ? (
               <BulletForm
                 initial={b}
+                experiences={experiences}
                 saving={saving}
                 onSubmit={(input) => handleUpdate(b.id, input)}
                 onCancel={() => setEditingId(null)}
@@ -182,9 +192,23 @@ export default function BulletsPage() {
                     <span className="font-mono text-[11px] uppercase tracking-widest text-muted">
                       {CATEGORY_LABEL[b.category]}
                     </span>
-                    {b.sourceRole && (
-                      <span className="text-xs text-muted">· {b.sourceRole}</span>
-                    )}
+                    {(() => {
+                      const exp = experiences.find((e) => e.id === b.experienceId);
+                      if (exp) {
+                        return (
+                          <span className="inline-flex items-center gap-1 text-xs text-accent">
+                            <Briefcase size={11} /> {exp.company} ·{' '}
+                            <span className="font-mono">
+                              {formatPeriod(exp.startDate, exp.endDate)}
+                            </span>
+                          </span>
+                        );
+                      }
+                      if (b.sourceRole) {
+                        return <span className="text-xs text-muted">· {b.sourceRole}</span>;
+                      }
+                      return null;
+                    })()}
                   </div>
                   <p className="mt-2 text-sm leading-relaxed">{b.textEs}</p>
                   <p className="mt-1.5 text-sm leading-relaxed text-muted">{b.textEn}</p>
@@ -217,40 +241,19 @@ export default function BulletsPage() {
           </li>
         ))}
       </ul>
+
+      {/* Sin empleos cargados, los bullets no pueden agruparse por empresa. */}
+      {experiences.length === 0 && bullets.length > 0 && (
+        <div className="card mt-8 p-5">
+          <p className="text-sm">
+            Aún no has añadido <strong>empleos</strong>. Sin ellos, tu CV lista los logros
+            sin decir en qué empresa ni cuándo ocurrieron.
+          </p>
+          <Link href="/experiences" className="btn-primary mt-4 inline-block">
+            Añadir tus empleos
+          </Link>
+        </div>
+      )}
     </main>
-  );
-}
-
-/**
- * Borrado en DOS clics (sin confirm() nativo): el primero "arma" el botón, el
- * segundo confirma. Salir del foco lo desarma. Suficiente fricción para evitar
- * accidentes sin ensuciar la UI con un modal.
- */
-function DeleteButton({ onConfirm }: { onConfirm: () => void }) {
-  const [armed, setArmed] = useState(false);
-
-  if (!armed) {
-    return (
-      <button
-        type="button"
-        aria-label="Borrar bullet"
-        className="rounded-full p-2 text-muted transition hover:bg-red-500/10 hover:text-red-500"
-        onClick={() => setArmed(true)}
-      >
-        <Trash2 size={16} />
-      </button>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      className="rounded-full bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-500 ring-1 ring-red-500/30 transition hover:bg-red-500/20 dark:text-red-400"
-      onClick={onConfirm}
-      onBlur={() => setArmed(false)}
-      autoFocus
-    >
-      ¿Borrar?
-    </button>
   );
 }
