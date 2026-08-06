@@ -66,6 +66,15 @@
   .input-error {
     @apply ring-red-500/60 focus:ring-red-500/60;
   }
+  /* El desplegable NATIVO de un <select> lo pinta el navegador, no nosotros.
+     Al darle `.input` un fondo propio (bg-transparent), Chrome deja de pintarlo
+     con el tema del sistema —lo que `color-scheme` habría resuelto— y saca las
+     opciones sobre blanco: en oscuro, texto casi blanco sobre blanco. Atarlas a
+     los tokens devuelve el menú al tema, en claro y en oscuro. */
+  select.input option {
+    background-color: rgb(var(--bg));
+    color: rgb(var(--fg));
+  }
   .label {
     @apply mb-1.5 block text-sm font-medium;
   }
