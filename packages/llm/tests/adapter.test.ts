@@ -32,6 +32,20 @@ function setup(bullets: Bullet[] = mockBullets) {
   return { adapter, complete, findByProfileId };
 }
 
+/**
+ * El TailoredBullet esperado para `text`: su ORIGEN es el bullet i del banco.
+ * Todo salvo el texto debe venir del banco real, nunca de Claude.
+ */
+function origin(i: number, text: string) {
+  return {
+    text,
+    category: mockBullets[i].category,
+    experienceId: mockBullets[i].experienceId,
+    sourceRole: mockBullets[i].sourceRole,
+    skills: mockBullets[i].skills,
+  };
+}
+
 /** Empaqueta un texto como si fuera la salida del motor. */
 function fromClaude(text: string) {
   return {
@@ -54,7 +68,10 @@ describe('ClaudeAdapter.tailorCv', () => {
 
     const result = await adapter.tailorCv(job, mockProfile, lang);
 
-    expect(result.bullets).toEqual([b0, b1]);
+    // bullets ahora son objetos: texto + de dónde vienen en el banco original
+    // (category/experienceId/sourceRole), no strings sueltos — eso es lo que
+    // documents usa para agrupar el CV por empresa y por contexto (Paso 1d).
+    expect(result.bullets).toEqual([origin(0, b0), origin(1, b1)]);
     expect(result.keywords).toEqual(['Node.js', 'REST']);
     expect(result.content).toContain('•');
     // mock = stub + verificación: confirmamos que llamó al motor con la operación correcta
@@ -70,10 +87,10 @@ describe('ClaudeAdapter.tailorCv', () => {
     complete.mockResolvedValue(fromClaude(fenced));
 
     const result = await adapter.tailorCv(job, mockProfile, lang);
-    expect(result.bullets).toEqual([b0]);
+    expect(result.bullets).toEqual([origin(0, b0)]);
   });
 
-  it('RECHAZA si el LLM inventa un bullet (anti-invención)', async () => {
+  it('RECHAZA si TODOS los bullets son inventados (nada válido que ofrecer)', async () => {
     const { adapter, complete } = setup();
     complete.mockResolvedValue(
       fromClaude(
@@ -85,6 +102,24 @@ describe('ClaudeAdapter.tailorCv', () => {
     );
 
     await expect(adapter.tailorCv(job, mockProfile, lang)).rejects.toThrow(GuardrailViolationError);
+  });
+
+  it('degrada con gracia: si hay MEZCLA de reales e inventados, descarta solo el inventado', async () => {
+    const { adapter, complete } = setup();
+    const real = mockBullets[0].textEn;
+    complete.mockResolvedValue(
+      fromClaude(
+        JSON.stringify({
+          selected_bullets: [real, 'Won a Nobel Prize in Physics for quantum computing'],
+          keywords: ['NestJS'],
+        })
+      )
+    );
+
+    const result = await adapter.tailorCv(job, mockProfile, lang);
+
+    // El inventado desaparece; el real sobrevive con su origen intacto.
+    expect(result.bullets).toEqual([origin(0, real)]);
   });
 
   it('lanza ProfileHasNoBulletsError si el perfil no tiene bullets', async () => {

@@ -19,7 +19,7 @@ import type { Job, Profile } from '@jobfinder/core';
  * el mismo tipo que define el core. Una sola fuente de verdad.
  *
  * Forma (definida en core):
- *   { content: string; bullets: string[]; keywords: string[] }
+ *   { content: string; bullets: TailoredBullet[]; keywords: string[] }
  */
 export type { TailoredCv } from '@jobfinder/core';
 
@@ -99,10 +99,24 @@ export interface ClaudeAdapterConfig {
 }
 
 /**
+ * Un bullet seleccionado por Claude, resuelto contra el banco original.
+ * `matchedBullet` es el bullet REAL cuyo texto se parece más al que Claude
+ * devolvió — de ahí sacamos `category`/`experienceId` para el CV agrupado
+ * (Sprint 6, Paso 1d). Undefined solo si NINGÚN bullet superó el umbral (en
+ * ese caso `valid` ya es false y el adapter lanza antes de mirar `matches`).
+ */
+export interface BulletMatch {
+  text: string;
+  matchedBullet?: import('@jobfinder/core').Bullet;
+  score: number;
+}
+
+/**
  * RESULTADO de la validación anti-invención de bullets.
  * (lo usa BulletOriginValidator en guardrails.ts)
  */
 export interface BulletValidationResult {
   valid: boolean;
   issues: string[];
+  matches: BulletMatch[];
 }

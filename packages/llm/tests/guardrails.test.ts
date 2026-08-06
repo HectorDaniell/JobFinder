@@ -39,6 +39,24 @@ describe('BulletOriginValidator (anti-invención)', () => {
     expect(result.issues).toHaveLength(1);
   });
 
+  it('resuelve `matches` al bullet original que mejor hizo match (lo que usa el adapter para agrupar el CV)', () => {
+    const reformulado = [
+      'Designed and maintained a scalable REST API in NestJS handling 10k RPS with low latency',
+    ];
+    const result = BulletOriginValidator.validate(reformulado, mockBullets, 'en');
+
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].matchedBullet?.id).toBe(mockBullets[0].id);
+    expect(result.matches[0].score).toBeGreaterThan(0.5);
+  });
+
+  it('un bullet inventado no resuelve a ningún match (matchedBullet undefined)', () => {
+    const inventado = ['Led a team of 50 engineers across three countries'];
+    const result = BulletOriginValidator.validate(inventado, mockBullets, 'en');
+
+    expect(result.matches[0].matchedBullet).toBeUndefined();
+  });
+
   it('detecta solo el inventado cuando se mezclan reales y falsos', () => {
     const mezcla = [
       'Designed and maintained a scalable REST API in NestJS handling 10k RPS with low latency', // real

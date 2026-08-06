@@ -18,6 +18,7 @@
 import type {
   LlmPort,
   TailoredCv,
+  TailoredBullet,
   Job,
   Profile,
   Bullet,
@@ -36,7 +37,7 @@ import {
   MalformedLlmResponseError,
   ProfileHasNoBulletsError,
 } from './errors';
-import type { ClaudeTailorCvResponse } from './types';
+import type { ClaudeTailorCvResponse, BulletMatch } from './types';
 
 /**
  * Puerto definido por el consumidor: lo que el adapter necesita del exterior
@@ -82,16 +83,40 @@ export class ClaudeAdapter implements LlmPort {
     // 4. Parsear + validar estructura (guardrail de salida)
     const parsed = this.parseTailorCvResponse(text);
 
-    // 5. Anti-invención: cada bullet debe provenir del banco real
+    // 5. Anti-invención: cada bullet debe provenir del banco real. La misma
+    //    pasada YA resolvió a qué bullet original hizo match cada uno.
     const check = BulletOriginValidator.validate(parsed.selected_bullets, bank, lang);
-    if (!check.valid) {
+
+    // Degradación con gracia: un bullet inventado no tumba el CV entero.
+    // Se descarta SOLO ese (queda fuera de validMatches) y seguimos con los
+    // que sí vienen del banco real. Solo si Claude falló en TODOS no queda
+    // nada legítimo que ofrecer, y ahí sí es un error.
+    const validMatches = check.matches.filter(
+      (m): m is BulletMatch & { matchedBullet: Bullet } => m.matchedBullet !== undefined
+    );
+    if (validMatches.length === 0) {
       throw new GuardrailViolationError(check.issues);
     }
+    if (check.issues.length > 0) {
+      console.warn(
+        `tailorCv: ${check.issues.length} bullet(s) inventado(s) descartado(s) — ${check.issues.join('; ')}`
+      );
+    }
 
-    // 6. Mapear respuesta cruda → contrato del core (TailoredCv)
+    // 6. Mapear respuesta cruda → contrato del core (TailoredCv). Todo salvo el
+    //    texto sale del bullet ORIGINAL emparejado, nunca de Claude: documents
+    //    lo usa para agrupar el CV por empresa y por contexto (Paso 1d).
+    const bullets: TailoredBullet[] = validMatches.map((m) => ({
+      text: m.text,
+      category: m.matchedBullet.category,
+      experienceId: m.matchedBullet.experienceId,
+      sourceRole: m.matchedBullet.sourceRole,
+      skills: m.matchedBullet.skills,
+    }));
+
     return {
-      content: parsed.selected_bullets.map((b) => `• ${b}`).join('\n'),
-      bullets: parsed.selected_bullets,
+      content: bullets.map((b) => `• ${b.text}`).join('\n'),
+      bullets,
       keywords: parsed.keywords,
     };
   }

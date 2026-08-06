@@ -11,7 +11,7 @@
 
 import { z } from 'zod';
 import type { Bullet } from '@jobfinder/core';
-import type { BulletValidationResult } from './types';
+import type { BulletValidationResult, BulletMatch } from './types';
 
 /* ============ 1. INPUT GUARDRAILS ============ */
 
@@ -75,6 +75,12 @@ export const TailorCoverLetterSchema = z.string().min(200).max(3000);
  *
  * En Fase 2 se reemplaza por similitud coseno de embeddings (más precisa). La
  * INTERFAZ no cambia, solo la implementación.
+ *
+ * Además de validar, RESUELVE cada bullet seleccionado a su origen (`matches`):
+ * qué bullet real del banco fue el mejor match. El adapter reutiliza esa
+ * resolución —no solo el veredicto— para saber la categoría y la experiencia
+ * de cada bullet reformulado y así agrupar el CV por empresa (Paso 1d). Una
+ * sola pasada calcula ambas cosas: repetir el bucle sería recalcular lo mismo.
  */
 export class BulletOriginValidator {
   static validate(
@@ -84,14 +90,23 @@ export class BulletOriginValidator {
     similarityThreshold = 0.5
   ): BulletValidationResult {
     const issues: string[] = [];
+    const matches: BulletMatch[] = [];
 
     for (const selected of selectedBullets) {
       let best = 0;
+      let bestBullet: Bullet | undefined;
       for (const bullet of authorizedBullets) {
         const score = BulletOriginValidator.overlap(selected, bullet.getText(lang));
-        if (score > best) best = score;
+        if (score > best) {
+          best = score;
+          bestBullet = bullet;
+        }
       }
-      if (best < similarityThreshold) {
+
+      const matched = best >= similarityThreshold;
+      matches.push({ text: selected, matchedBullet: matched ? bestBullet : undefined, score: best });
+
+      if (!matched) {
         issues.push(
           `"${selected.slice(0, 60)}..." no se encontró en el banco ` +
             `(similitud máx: ${(best * 100).toFixed(0)}%)`
@@ -99,7 +114,7 @@ export class BulletOriginValidator {
       }
     }
 
-    return { valid: issues.length === 0, issues };
+    return { valid: issues.length === 0, issues, matches };
   }
 
   /**
