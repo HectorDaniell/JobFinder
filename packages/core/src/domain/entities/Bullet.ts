@@ -4,13 +4,16 @@
  * The LLM will select and reformat bullets from this bank when adapting CV.
  */
 
+/** Named so ports (LlmPort) can reuse it without redeclaring the union. */
+export type BulletCategory = 'experience' | 'achievement' | 'project' | 'education';
+
 export class Bullet {
   readonly id: string;
   readonly profileId: string;
   readonly textEs: string;
   readonly textEn: string;
   readonly skills: string[];
-  readonly category: 'experience' | 'achievement' | 'project' | 'education';
+  readonly category: BulletCategory;
   /** The job this happened at. Undefined for personal projects and education. */
   readonly experienceId?: string;
   readonly sourceRole?: string; // Free-text context, for bullets with no linked experience
@@ -24,7 +27,7 @@ export class Bullet {
     textEs: string;
     textEn: string;
     skills: string[];
-    category: 'experience' | 'achievement' | 'project' | 'education';
+    category: BulletCategory;
     experienceId?: string;
     sourceRole?: string;
     metrics?: Record<string, string | number>;

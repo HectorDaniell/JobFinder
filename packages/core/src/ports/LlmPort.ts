@@ -6,6 +6,7 @@
 import { Job } from '../domain/entities/Job';
 import { Profile } from '../domain/entities/Profile';
 import { JobScore } from '../domain/value-objects/JobScore';
+import type { BulletCategory } from '../domain/entities/Bullet';
 
 export interface ExtractedJob {
   title: string;
@@ -16,9 +17,28 @@ export interface ExtractedJob {
   externalId: string;
 }
 
+/**
+ * A bullet Claude selected and reformulated, still traceable to its ORIGIN:
+ * every field but `text` comes from the real bank bullet it matched (resolved
+ * by the anti-fabrication guardrail, ADR-0023), never invented.
+ *
+ * `experienceId` undefined = no linked employer (a project or education
+ * bullet); those group under `sourceRole` instead — the free-text context that
+ * titles a thesis or a side project. `documents` uses these fields to group the
+ * rendered CV into blocks instead of printing a flat list.
+ */
+export interface TailoredBullet {
+  text: string;
+  category: BulletCategory;
+  experienceId?: string;
+  sourceRole?: string;
+  /** The bank bullet's curated skill tags. Source of the CV's skills line. */
+  skills: string[];
+}
+
 export interface TailoredCv {
   content: string; // Markdown or structured data
-  bullets: string[];
+  bullets: TailoredBullet[];
   keywords: string[];
 }
 

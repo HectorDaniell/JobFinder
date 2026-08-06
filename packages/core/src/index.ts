@@ -1,6 +1,6 @@
 // Entities
 export { Profile, PreferenceSchema, type Preferences } from './domain/entities/Profile';
-export { Bullet } from './domain/entities/Bullet';
+export { Bullet, type BulletCategory } from './domain/entities/Bullet';
 export { Experience } from './domain/entities/Experience';
 export { Job, type JobSeniority, type JobModality } from './domain/entities/Job';
 
@@ -16,6 +16,7 @@ export {
   type LlmPort,
   type ExtractedJob,
   type TailoredCv,
+  type TailoredBullet,
 } from './ports/LlmPort';
 export { type EmbedderPort } from './ports/EmbedderPort';
 export {
@@ -37,6 +38,8 @@ export {
 export {
   TailorDocuments,
   type ProfileProvider,
+  type ExperienceProvider,
+  type BulletProvider,
   type TailorInput,
   type TailorResult,
 } from './use-cases/TailorDocuments';
