@@ -8,6 +8,7 @@ import { TailorRequestSchema, type TailorRequestDto } from './tailor.schema';
 interface TailorFileResponse {
   filename: string;
   mimeType: string;
+  kind: 'cv' | 'cover';
   base64: string;
 }
 
@@ -86,6 +87,7 @@ export class TailorController {
       files: result.files.map((f) => ({
         filename: f.filename,
         mimeType: f.mimeType,
+        kind: f.kind,
         base64: Buffer.from(f.bytes).toString('base64'),
       })),
     };

@@ -34,14 +34,17 @@ import { createFakeLlm } from './fake-llm';
       useFactory: (
         profiles: ProfileRepository,
         bullets: BulletRepository,
+        experiences: ExperienceRepository,
         documents: DocumentAdapter
       ) =>
         new TailorDocuments(
           profiles,
+          experiences,
+          bullets,
           process.env.USE_FAKE_LLM === 'true' ? createFakeLlm(bullets) : createLazyLlm(bullets),
           documents
         ),
-      inject: [ProfileRepository, BulletRepository, DocumentAdapter],
+      inject: [ProfileRepository, BulletRepository, ExperienceRepository, DocumentAdapter],
     },
   ],
   exports: [ProfileRepository, BulletRepository, ExperienceRepository, TailorDocuments],

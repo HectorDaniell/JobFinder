@@ -11,11 +11,20 @@ import type { TailorRequestDto } from '../src/tailor/tailor.schema';
  */
 
 const tailorResult: TailorResult = {
-  cv: { content: '# CV', bullets: ['Lideré X'], keywords: ['Node.js'] },
+  cv: {
+    content: '# CV',
+    bullets: [{ text: 'Lideré X', category: 'achievement', skills: ['Node.js'] }],
+    keywords: ['Node.js'],
+  },
   coverLetter: 'Estimado equipo...',
   files: [
     // bytes [37,80,68,70] = "%PDF" -> base64 "JVBERg=="
-    { filename: 'cv.pdf', mimeType: 'application/pdf', bytes: new Uint8Array([37, 80, 68, 70]) },
+    {
+      filename: 'cv.pdf',
+      mimeType: 'application/pdf',
+      kind: 'cv',
+      bytes: new Uint8Array([37, 80, 68, 70]),
+    },
   ],
 };
 
@@ -81,7 +90,7 @@ describe('TailorController', () => {
     expect(result.cv).toEqual(tailorResult.cv);
     expect(result.coverLetter).toBe('Estimado equipo...');
     expect(result.files).toEqual([
-      { filename: 'cv.pdf', mimeType: 'application/pdf', base64: 'JVBERg==' },
+      { filename: 'cv.pdf', mimeType: 'application/pdf', kind: 'cv', base64: 'JVBERg==' },
     ]);
   });
 });

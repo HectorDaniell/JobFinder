@@ -1,4 +1,4 @@
-import type { Job, LlmPort, Profile, TailoredCv } from '@jobfinder/core';
+import type { Job, LlmPort, Profile, TailoredCv, TailoredBullet } from '@jobfinder/core';
 import { ProfileHasNoBulletsError, type BulletProvider } from '@jobfinder/llm';
 
 /**
@@ -42,9 +42,20 @@ export function createFakeLlm(bullets: BulletProvider): LlmPort {
           ? `Perfil adaptado para ${job.title} en ${job.company}.`
           : `Profile tailored for ${job.title} at ${job.company}.`;
 
+      // A diferencia del adapter real, aquí no hay texto reformulado que
+      // resolver contra el banco: `selected` YA ES el bullet original, así
+      // que category/experienceId salen directos, sin necesidad de match.
+      const tailoredBullets: TailoredBullet[] = selected.map((b) => ({
+        text: b.getText(lang),
+        category: b.category,
+        experienceId: b.experienceId,
+        sourceRole: b.sourceRole,
+        skills: b.skills,
+      }));
+
       return {
         content: `${header}\n\n${lang === 'es' ? profile.summaryEs : profile.summaryEn}`,
-        bullets: selected.map((b) => b.getText(lang)),
+        bullets: tailoredBullets,
         keywords: keywords.length > 0 ? keywords : skills.slice(0, 5),
       };
     },
