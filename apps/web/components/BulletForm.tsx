@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import type { BulletDto, CreateBulletInput, BulletCategory } from '../lib/types';
+import type {
+  BulletDto,
+  CreateBulletInput,
+  BulletCategory,
+  ExperienceDto,
+} from '../lib/types';
+import { formatPeriod } from '../lib/dates';
 import { Textarea, Input, Select } from './ui/fields';
 import { TagInput } from './ui/TagInput';
 
@@ -27,22 +33,35 @@ export const CATEGORY_OPTIONS = [
  */
 export function BulletForm({
   initial,
+  experiences,
   saving,
   onSubmit,
   onCancel,
 }: {
   initial?: BulletDto;
+  experiences: ExperienceDto[];
   saving: boolean;
   onSubmit: (input: CreateBulletInput) => void;
   onCancel: () => void;
 }) {
   const [form, setForm] = useState<CreateBulletInput>({
+    experienceId: initial?.experienceId ?? null,
     textEs: initial?.textEs ?? '',
     textEn: initial?.textEn ?? '',
     skills: initial?.skills ?? [],
     category: initial?.category ?? 'experience',
     sourceRole: initial?.sourceRole ?? '',
   });
+
+  // '' representa "sin empleo": un <select> solo maneja strings, y ese caso es
+  // legítimo (proyectos personales, educación).
+  const experienceOptions = [
+    { value: '', label: 'Sin empleo — proyecto o educación' },
+    ...experiences.map((e) => ({
+      value: e.id,
+      label: `${e.role} — ${e.company} · ${formatPeriod(e.startDate, e.endDate)}`,
+    })),
+  ];
 
   function set<K extends keyof CreateBulletInput>(key: K, value: CreateBulletInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -77,14 +96,31 @@ export function BulletForm({
           onChange={(v) => set('category', v)}
           options={CATEGORY_OPTIONS}
         />
-        <Input
-          label="Rol de origen (opcional)"
-          value={form.sourceRole ?? ''}
-          onChange={(v) => set('sourceRole', v)}
-          placeholder="Backend Developer @ Acme"
-          hint="Dónde ocurrió este logro."
+        <Select
+          label="¿Dónde ocurrió?"
+          value={form.experienceId ?? ''}
+          onChange={(v) => set('experienceId', v || null)}
+          options={experienceOptions}
+          hint={
+            experiences.length === 0
+              ? 'Añade tus empleos para agrupar el CV por empresa.'
+              : 'Agrupa este logro bajo la empresa y fechas correctas.'
+          }
         />
       </div>
+
+      {/* Sin empleo asignado, `sourceRole` es lo único que da contexto
+          (una tesis, un proyecto personal). Con empleo, sobra: la empresa y las
+          fechas ya salen de la experiencia. */}
+      {!form.experienceId && (
+        <Input
+          label="Contexto (opcional)"
+          value={form.sourceRole ?? ''}
+          onChange={(v) => set('sourceRole', v)}
+          placeholder="Proyecto de tesis — Ingeniería de Sistemas"
+          hint="Solo para logros que no pertenecen a un empleo."
+        />
+      )}
 
       <TagInput
         label="Skills"
