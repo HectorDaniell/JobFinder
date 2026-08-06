@@ -15,6 +15,7 @@ import type {
   DocFormat,
   DocumentArtifact,
   DocumentPort,
+  Experience,
   Profile,
   TailoredCv,
 } from '@jobfinder/core';
@@ -28,13 +29,14 @@ export class DocumentAdapter implements DocumentPort {
   async generateCv(
     cv: TailoredCv,
     profile: Profile,
+    experiences: Experience[],
     lang: 'es' | 'en',
     format: DocFormat
   ): Promise<DocumentArtifact> {
-    const model = buildResumeModel(cv, profile, lang);
+    const model = buildResumeModel(cv, profile, experiences, lang);
     const bytes =
       format === 'pdf' ? await exportResumeToPdf(model) : await exportResumeToDocx(model);
-    return this.artifact(bytes, format, this.filename(profile, 'cv', lang, format));
+    return this.artifact(bytes, format, 'cv', this.filename(profile, 'cv', lang, format));
   }
 
   async generateCoverLetter(
@@ -48,19 +50,21 @@ export class DocumentAdapter implements DocumentPort {
       format === 'pdf'
         ? await exportCoverLetterToPdf(model)
         : await exportCoverLetterToDocx(model);
-    return this.artifact(bytes, format, this.filename(profile, 'cover', lang, format));
+    return this.artifact(bytes, format, 'cover', this.filename(profile, 'cover', lang, format));
   }
 
-  /** Envuelve los bytes con su MIME y el nombre de archivo sugerido. */
+  /** Envuelve los bytes con su MIME, qué documento es y el nombre sugerido. */
   private artifact(
     bytes: Uint8Array,
     format: DocFormat,
+    kind: 'cv' | 'cover',
     filename: string
   ): DocumentArtifact {
     return {
       bytes,
       mimeType: format === 'pdf' ? PDF_MIME : DOCX_MIME,
       filename,
+      kind,
     };
   }
 

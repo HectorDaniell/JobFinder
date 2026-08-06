@@ -8,6 +8,7 @@ import { buildResumeModel } from '../src/model/buildResumeModel';
 import { buildCoverLetterModel } from '../src/model/buildCoverLetterModel';
 import { mockProfile } from './fixtures/profile.mock';
 import { mockTailoredCv } from './fixtures/tailoredCv.mock';
+import { mockExperiences } from './fixtures/experiences.mock';
 import { mockCoverLetter } from './fixtures/coverLetter.mock';
 
 /** Un PDF empieza con la firma "%PDF". */
@@ -16,7 +17,9 @@ const pdfSignature = (bytes: Uint8Array): string =>
 
 describe('pdf exporter', () => {
   it('exportResumeToPdf genera un PDF válido (firma %PDF, no vacío)', async () => {
-    const bytes = await exportResumeToPdf(buildResumeModel(mockTailoredCv, mockProfile, 'en'));
+    const bytes = await exportResumeToPdf(
+      buildResumeModel(mockTailoredCv, mockProfile, mockExperiences, 'en')
+    );
     expect(bytes).toBeInstanceOf(Uint8Array);
     expect(pdfSignature(bytes)).toBe('%PDF');
     expect(bytes.length).toBeGreaterThan(500);

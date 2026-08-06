@@ -11,7 +11,7 @@
 
 import PDFDocument from 'pdfkit';
 import type { CoverLetterModel } from '../model/CoverLetterModel';
-import type { ResumeHeader, ResumeModel } from '../model/ResumeModel';
+import type { ResumeGroup, ResumeHeader, ResumeModel } from '../model/ResumeModel';
 
 /** MIME oficial de los PDF. Lo usará el adapter al armar el artifact. */
 export const PDF_MIME = 'application/pdf';
@@ -34,14 +34,11 @@ export function exportResumeToPdf(model: ResumeModel): Promise<Uint8Array> {
     sectionTitle(doc, model.labels.skills);
     doc.font(FONT).fontSize(SIZE_BODY).text(model.skills.join(', '));
 
-    sectionTitle(doc, model.labels.experience);
-    doc.font(FONT).fontSize(SIZE_BODY).list(model.experience, {
-      listType: 'bullet',
-      bulletRadius: 1.5,
-      textIndent: 12,
-      lineGap: 2,
-      paragraphGap: 4,
-    });
+    // Las tres secciones agrupadas se dibujan igual: un encabezado por bloque
+    // con sus bullets debajo. Cada una se omite si no tiene ningún bloque.
+    drawSection(doc, model.labels.experience, model.experience);
+    drawSection(doc, model.labels.projects, model.projects);
+    drawSection(doc, model.labels.education, model.education);
   });
 }
 
@@ -95,4 +92,43 @@ function sectionTitle(doc: PDFKit.PDFDocument, title: string): void {
   doc.moveDown(1);
   doc.font(FONT_BOLD).fontSize(SIZE_SECTION).text(title);
   doc.moveDown(0.3);
+}
+
+/**
+ * Lista de viñetas real (no "•" tecleado), con el espaciado estándar del CV.
+ * Con la lista vacía no dibuja nada: pdfkit deja un hueco por una lista sin
+ * elementos, y un empleo sin logros seleccionados es un caso normal.
+ */
+function bulletList(doc: PDFKit.PDFDocument, items: string[]): void {
+  if (items.length === 0) return;
+  doc.font(FONT).fontSize(SIZE_BODY).list(items, {
+    listType: 'bullet',
+    bulletRadius: 1.5,
+    textIndent: 12,
+    lineGap: 2,
+    paragraphGap: 4,
+  });
+}
+
+/** Una sección agrupada (Experiencia, Proyectos, Educación). Se omite si va vacía. */
+function drawSection(doc: PDFKit.PDFDocument, title: string, groups: ResumeGroup[]): void {
+  if (groups.length === 0) return;
+  sectionTitle(doc, title);
+  for (const group of groups) {
+    drawGroup(doc, group);
+  }
+}
+
+/** Un bloque: encabezado en negrita, línea gris opcional, y sus bullets. */
+function drawGroup(doc: PDFKit.PDFDocument, group: ResumeGroup): void {
+  doc.moveDown(0.5);
+  if (group.heading) {
+    doc.font(FONT_BOLD).fontSize(SIZE_BODY).text(group.heading);
+  }
+  if (group.meta) {
+    doc.font(FONT).fontSize(SIZE_CONTACT).fillColor('#555555').text(group.meta);
+    doc.fillColor('black'); // pdfkit no resetea el color solo: hay que devolverlo.
+  }
+  doc.moveDown(0.2);
+  bulletList(doc, group.bullets);
 }

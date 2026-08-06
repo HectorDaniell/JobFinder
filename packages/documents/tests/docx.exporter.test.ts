@@ -8,6 +8,7 @@ import { buildResumeModel } from '../src/model/buildResumeModel';
 import { buildCoverLetterModel } from '../src/model/buildCoverLetterModel';
 import { mockProfile } from './fixtures/profile.mock';
 import { mockTailoredCv } from './fixtures/tailoredCv.mock';
+import { mockExperiences } from './fixtures/experiences.mock';
 import { mockCoverLetter } from './fixtures/coverLetter.mock';
 
 /** Un .docx es un ZIP → sus bytes empiezan con la firma "PK". */
@@ -16,7 +17,9 @@ const zipSignature = (bytes: Uint8Array): string =>
 
 describe('docx exporter', () => {
   it('exportResumeToDocx genera un .docx válido (firma PK, no vacío)', async () => {
-    const bytes = await exportResumeToDocx(buildResumeModel(mockTailoredCv, mockProfile, 'en'));
+    const bytes = await exportResumeToDocx(
+      buildResumeModel(mockTailoredCv, mockProfile, mockExperiences, 'en')
+    );
     expect(bytes).toBeInstanceOf(Uint8Array);
     expect(zipSignature(bytes)).toBe('PK');
     expect(bytes.length).toBeGreaterThan(1000);

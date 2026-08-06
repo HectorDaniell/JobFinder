@@ -9,7 +9,7 @@
 
 import { AlignmentType, Document, Packer, Paragraph, TextRun } from 'docx';
 import type { CoverLetterModel } from '../model/CoverLetterModel';
-import type { ResumeHeader, ResumeModel } from '../model/ResumeModel';
+import type { ResumeGroup, ResumeHeader, ResumeModel } from '../model/ResumeModel';
 
 /** MIME oficial de los .docx (OpenXML). Lo usará el adapter al armar el artifact. */
 export const DOCX_MIME =
@@ -29,9 +29,41 @@ export function exportResumeToDocx(model: ResumeModel): Promise<Uint8Array> {
     new Paragraph({ children: [run(model.summary)] }),
     sectionHeading(model.labels.skills),
     new Paragraph({ children: [run(model.skills.join(', '))] }),
-    sectionHeading(model.labels.experience),
-    ...model.experience.map(bulletParagraph),
+    // Las tres secciones agrupadas se arman igual y se omiten si van vacías.
+    ...sectionParagraphs(model.labels.experience, model.experience),
+    ...sectionParagraphs(model.labels.projects, model.projects),
+    ...sectionParagraphs(model.labels.education, model.education),
   ]);
+}
+
+/** Una sección agrupada (Experiencia, Proyectos, Educación). Vacía si no hay bloques. */
+function sectionParagraphs(title: string, groups: ResumeGroup[]): Paragraph[] {
+  if (groups.length === 0) return [];
+  return [sectionHeading(title), ...groups.flatMap(groupParagraphs)];
+}
+
+/** Un bloque: encabezado en negrita, línea secundaria opcional, y sus bullets. */
+function groupParagraphs(group: ResumeGroup): Paragraph[] {
+  const paragraphs: Paragraph[] = [];
+
+  if (group.heading) {
+    paragraphs.push(
+      new Paragraph({
+        spacing: { before: 160, after: group.meta ? 0 : 60 },
+        children: [run(group.heading, { bold: true })],
+      })
+    );
+  }
+  if (group.meta) {
+    paragraphs.push(
+      new Paragraph({
+        spacing: { after: 60 },
+        children: [run(group.meta, { size: SIZE_CONTACT })],
+      })
+    );
+  }
+
+  return [...paragraphs, ...group.bullets.map(bulletParagraph)];
 }
 
 export function exportCoverLetterToDocx(model: CoverLetterModel): Promise<Uint8Array> {
