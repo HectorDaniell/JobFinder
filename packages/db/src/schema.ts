@@ -3,10 +3,12 @@ import {
   uuid,
   text,
   timestamp,
-  jsonb,
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
+// `jsonb` propio, NO el de drizzle-orm: el de serie guarda el JSON como cadena
+// y lo vuelve inconsultable desde SQL. Ver columns.ts y ADR-0024.
+import { jsonb } from './columns';
 
 /**
  * Database schema for JobFinder.

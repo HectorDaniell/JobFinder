@@ -15,6 +15,13 @@
       "when": 1785801600000,
       "tag": "0001_add_experience",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1785974400000,
+      "tag": "0002_fix_jsonb_double_encoding",
+      "breakpoints": true
     }
   ]
 }

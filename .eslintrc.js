@@ -23,5 +23,27 @@ module.exports = {
       files: ['**/*.test.ts', '**/*.spec.ts'],
       env: { jest: true },
     },
+    {
+      // El `jsonb` de drizzle-orm hace un JSON.stringify que sobra con
+      // postgres.js: guarda el JSON como cadena y lo deja inconsultable desde
+      // SQL. Usar siempre el de src/columns.ts. Ver ADR-0024.
+      files: ['packages/db/src/**/*.ts'],
+      excludedFiles: ['packages/db/src/columns.ts'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            paths: [
+              {
+                name: 'drizzle-orm/pg-core',
+                importNames: ['jsonb'],
+                message:
+                  "Usa el `jsonb` de './columns' (ADR-0024): el de drizzle guarda el JSON doblemente codificado y rompe las consultas SQL.",
+              },
+            ],
+          },
+        ],
+      },
+    },
   ],
 };
