@@ -2,11 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildResumeModel } from '../src/model/buildResumeModel';
 import { mockProfile, mockProfileAccents } from './fixtures/profile.mock';
 import { mockTailoredCv } from './fixtures/tailoredCv.mock';
-import {
-  mockExperiences,
-  mockExperienceCurrent,
-  mockExperiencePast,
-} from './fixtures/experiences.mock';
+import { mockExperiences, mockExperiencePast } from './fixtures/experiences.mock';
 
 describe('buildResumeModel', () => {
   it('localiza los títulos de sección según el idioma', () => {
