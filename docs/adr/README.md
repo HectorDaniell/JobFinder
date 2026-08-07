@@ -45,6 +45,9 @@ pueden "backfillear" como archivos más adelante si hiciera falta.)
 | [0022](0022-llm-falso-para-desarrollo-sin-creditos.md) | LLM falso tras un flag para desarrollar sin créditos | Aceptado (temporal) |
 | [0023](0023-contencion-en-vez-de-jaccard-anti-invencion.md) | Contención en vez de Jaccard en el anti-invención | Aceptado |
 | [0024](0024-jsonb-propio-sin-doble-codificacion.md) | Columna `jsonb` propia, sin doble codificación | Aceptado |
+| [0025](0025-degradar-con-gracia-ante-un-bullet-inventado.md) | Degradar con gracia cuando el LLM inventa un bullet | Aceptado |
+| [0026](0026-la-estructura-del-cv-no-se-filtra-por-relevancia.md) | La estructura del CV no se filtra por relevancia | Aceptado |
+| [0027](0027-habilidades-desde-los-tags-curados.md) | Las habilidades salen de los tags curados, no del LLM | Aceptado |
 
 ## Cómo agregar uno
 

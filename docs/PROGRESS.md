@@ -1,22 +1,28 @@
 # JobFinder — Progreso de implementación
 
-> Fecha de inicio: 2026-06-22 · Última actualización: 2026-07-31
+> Fecha de inicio: 2026-06-22 · Última actualización: 2026-08-06
 
 ## 📍 Estado actual
 
-**Fase 1 (Tailoring) COMPLETA** — flujo funcionando de punta a punta: crear perfil →
-banco de bullets → pegar una oferta → descargar CV y carta en PDF/DOCX, sin datos
-inventados.
+**Fase 1 (Tailoring) COMPLETA y en uso real con Claude.** Flujo de punta a punta:
+crear perfil → empleos → banco de bullets → pegar una oferta → descargar CV y carta
+en PDF/DOCX, sin datos inventados. El **Sprint 6** endureció el producto contra los
+fallos que aparecieron al usarlo de verdad y saldó la deuda del `jsonb`.
 
 | Sprint | Estado |
 |---|---|
 | 0 Setup · 1 Repos+BD · 2 Claude · 3 DocGen · 4 API · 5 Web | ✅ completos |
+| **6 Uso real** — Experience, CV agrupado, guardrails, UX, `jsonb` | ✅ completo |
 | **Fase 2** — Ingesta (Gmail + APIs de bolsas) + Matching | ⬜ siguiente |
 | Fase 3 — Postulación + Tracking · Fase 4 — Aprendizaje | ⬜ |
 
-- **Tests:** 89 verdes (core 3 · llm 32 · documents 20 · api 34).
-- **Deuda a resolver antes de la Fase 2:** `jsonb` double-encoded en `packages/db`
-  (ver Sesión 7).
+- **Tests:** 104 verdes (core 10 · llm 36 · documents 24 · api 34).
+- **Deuda del `jsonb` saldada** (ADR-0024): ya se puede consultar JSON desde SQL,
+  que es lo que necesita la Capa 1 del embudo.
+- **Pendiente antes de la Fase 2 (refinamiento de producto):** una `Experience`
+  necesita descripción propia, independiente de la vacante — hoy un empleo sin
+  bullets seleccionados sale con encabezado y fechas pero sin ninguna línea
+  debajo (ADR-0026).
 - El detalle de cada sprint está más abajo, en orden cronológico (este archivo es
   un **log**: las secciones antiguas se conservan como historia, no como estado).
 
@@ -563,3 +569,119 @@ consciente: ver abajo).
 ---
 
 ### 🚀 Sprint 5 = COMPLETAMENTE FUNCIONAL · **FASE 1 CERRADA**
+
+---
+
+## 📅 SESIÓN 8 — Sprint 6: el producto contra la realidad
+
+**Fecha:** 2026-08-05 / 2026-08-06
+
+### ✅ Sprint 6 — COMPLETADO
+
+**Objetivo:** con la `ANTHROPIC_API_KEY` puesta y el perfil real cargado, la Fase 1
+dejó de ser una demo. Este sprint es lo que el uso real destapó: dos bugs de
+producción, un CV que no tenía forma de CV, y la deuda del `jsonb`.
+
+#### ✅ 1. Primer uso real: dos bugs de producción
+
+- **Prompts ausentes en `dist`** — `tsc` no copia archivos que no son `.ts`, así
+  que `tailor-cover.txt` no llegaba al build y el error salía como un `ENOENT`
+  crudo. Se añadió `scripts/copy-prompts.js` (solo built-ins de Node, falla ruidoso
+  si copia cero archivos) y un `PromptFileNotFoundError` tipado. Cierra ADR-0012.
+- **Anti-invención con falsos positivos** — Jaccard es simétrico y penaliza la
+  diferencia de longitud y vocabulario que produce *toda* reformulación legítima,
+  que es justo lo que el prompt le pide a Claude. Medido con bullets reales: las
+  reformulaciones caían al 40–50% contra un umbral del 50%. Se cambió al
+  **coeficiente de contención** (`|A∩B| / min(|A|,|B|)`): las mismas
+  reformulaciones suben al 63–85% y una invención sigue en 0%. **ADR-0023**.
+
+#### ✅ 2. Entidad `Experience` (el CV tenía logros, pero no historial)
+
+- `Experience` en core + tabla + migración `0001` + `ExperienceRepository`.
+- CRUD completo en la API (`/profiles/:id/experiences`) y pantalla `/experiences`.
+- Los bullets se enlazan a un empleo; `sourceRole` queda solo para lo que no
+  pertenece a ninguno (tesis, proyectos personales).
+- "Sigo trabajando aquí" **no** es un booleano aparte: es la ausencia de
+  `endDate`, para que el estado imposible (actual *y* con fecha de fin) no se
+  pueda representar.
+- Fix de zona horaria: las fechas se leen con los getters **UTC**; los locales
+  mostraban abril como marzo en UTC-5.
+
+#### ✅ 3. El CV agrupado (Paso 1d)
+
+Antes el CV era una lista plana de bullets: no decía dónde ni cuándo ocurrió nada.
+
+- `TailoredCv.bullets` pasa de `string[]` a `TailoredBullet[]`: todo salvo el
+  texto (`category`, `experienceId`, `sourceRole`, `skills`) viene del bullet
+  **real** emparejado, nunca del LLM.
+- El guardrail anti-invención ya comparaba cada reformulación contra todo el
+  banco; ahora **conserva el mejor match** en vez de tirarlo. Una pasada, dos
+  respuestas: el veredicto y el origen.
+- `documents` agrupa en bloques con encabezado: experiencia por empresa
+  (actual primero, con periodo), y proyectos y formación por su contexto. Las
+  tres secciones comparten el tipo `ResumeGroup`, así que ambos exporters las
+  dibujan con la misma función.
+
+#### ✅ 4. El producto contra un CV real (4 correcciones)
+
+Revisando un PDF generado de verdad:
+
+- **Empleos que desaparecían** — omitir una empresa sin bullets seleccionados
+  abría un hueco de 5 meses en el historial. Ahora entran todas. **ADR-0026**.
+- **Formación que desaparecía** — un título es un hecho, no un argumento que
+  compita por relevancia. El caso de uso lo añade siempre. **ADR-0026**.
+- **Habilidades como frases** ("arquitectura frontend", "buenas prácticas") en vez
+  de tecnologías. Ahora salen de los tags que el usuario ya curó, ordenadas por
+  relevancia para la oferta. **ADR-0027**.
+- **Un bullet inventado tumbaba todo** — ahora se descarta solo ese y el CV sigue;
+  solo falla si no sobrevive ninguno. Y el prompt (v1.1) dice explícitamente que
+  dejar un requisito sin cubrir es el resultado correcto. **ADR-0025**.
+
+#### ✅ 5. UX de la pantalla estrella
+
+- **Skeleton** con la forma real del resultado mientras Claude responde, más una
+  barra **indeterminada**: las dos llamadas van en paralelo dentro de un solo
+  POST, así que cualquier porcentaje sería inventado.
+- **Botones de descarga** que dicen qué documento son ("CV", "Carta") con color e
+  icono por formato, en vez de un nombre de archivo que había que leer entero. El
+  `kind` viene de la API, no se adivina parseando el filename.
+- **Fix del `<select>` en modo oscuro**: `color-scheme` no bastaba porque `.input`
+  le da fondo propio al control, y Chrome pintaba las opciones sobre blanco.
+
+#### ✅ 6. Deuda saldada: el `jsonb` doblemente codificado
+
+La `jsonb` de Drizzle hacía `JSON.stringify` antes de pasar el valor a
+`postgres.js`, que ya serializa por su cuenta. Postgres guardaba una **cadena**
+que contiene JSON, así que `preferences->>'modality'` devolvía NULL y ningún
+índice GIN servía — inutilizando la Capa 1 del embudo antes de escribirla.
+
+Se corrigió con un `customType` propio (`packages/db/src/columns.ts`), la
+migración idempotente `0002` que repara las filas existentes, y una regla de
+ESLint que impide reintroducir el import malo. **ADR-0024**.
+
+### Tests
+
+**104 verdes** (core 10 · llm 36 · documents 24 · api 34), desde los 89 del
+Sprint 5. Los nuevos cubren la agrupación por empresa y por contexto, el empleo
+sin bullets, la educación añadida y no duplicada, las skills curadas y su orden,
+y la degradación con gracia del guardrail.
+
+### Verificación
+
+Con datos reales y sin gastar llamadas de más: el pipeline se ejercitó contra
+Postgres con un LLM de doble que devolvía la misma selección que había hecho
+Claude, comprobando el PDF resultante. Los arreglos de UI se verificaron en el
+navegador (estilos computados en ambos temas, no capturas), y el `jsonb` con los
+tres caminos reales contra la API viva: lectura, `PATCH` e `INSERT`.
+
+### ⏳ Lo que NO entra en el Sprint 6
+
+- **Refinamiento del flujo de inputs**: una `Experience` con descripción propia.
+  Se decidió esperar a tener más uso real antes de rediseñar (ver ADR-0026).
+- RF-04 (importar CV desde Google Docs) sigue pendiente.
+- Sin tests automatizados de la web.
+- pgvector, embeddings y `packages/sources` siguen vacíos → Fase 2.
+
+---
+
+### 🚀 Sprint 6 = COMPLETAMENTE FUNCIONAL

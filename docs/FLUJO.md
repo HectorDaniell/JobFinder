@@ -60,7 +60,7 @@ sequenceDiagram
     participant P as ZodValidationPipe
     participant C as TailorController
     participant UC as TailorDocuments<br/>(core)
-    participant DB as ProfileRepository
+    participant DB as Repositorios<br/>(perfil · empleos · bullets)
     participant L as ClaudeAdapter
     participant D as DocumentAdapter
     participant F as DomainExceptionFilter
@@ -92,13 +92,20 @@ sequenceDiagram
     and
         UC->>L: tailorCoverLetter(job, profile, lang)
         L-->>UC: texto de la carta
+    and
+        UC->>DB: findByProfileId — empleos y banco de bullets
+        DB-->>UC: Experience[] · Bullet[]
     end
-    Note over L: selecciona bullets REALES del banco<br/>guardrails: nunca inventa
+    Note over L: selecciona bullets REALES del banco.<br/>Si inventa alguno, se descarta solo ese<br/>(ADR-0025); cada bullet arrastra su ORIGEN
+
+    UC->>UC: COMPONE el CV: + formación (siempre)<br/>+ habilidades desde los tags curados
+    Note over UC: reglas de negocio del CV, no del LLM<br/>(ADR-0026 · ADR-0027)
 
     loop por cada formato (pdf, docx)
-        UC->>D: generateCv(...) y generateCoverLetter(...)
-        D-->>UC: DocumentArtifact { bytes, mimeType, filename }
+        UC->>D: generateCv(cv, profile, experiences, ...)
+        D-->>UC: DocumentArtifact { bytes, mimeType, kind, filename }
     end
+    Note over D: agrupa en bloques: empleos por empresa<br/>(TODOS, para no abrir huecos), proyectos<br/>y formación por su contexto
 
     UC-->>C: { cv, coverLetter, files }
     C->>C: bytes → base64 (JSON no transporta binario)
@@ -118,6 +125,35 @@ flowchart LR
 ```
 
 Es el **espejo exacto** de lo que hizo la API: `Buffer.from(bytes).toString('base64')`.
+
+### De dónde sale cada parte del CV
+
+No todo el documento lo decide el LLM. Separar qué es **adaptable** y qué es un
+**hecho** es lo que evita huecos en el historial y secciones que desaparecen:
+
+```mermaid
+flowchart LR
+    subgraph FIJO["Hechos — del perfil, siempre salen"]
+        H1["Encabezado y resumen"]
+        H2["Empleos: rol · empresa · periodo"]
+        H3["Formación"]
+        H4["Habilidades<br/><i>tus tags curados</i>"]
+    end
+    subgraph ADAPTA["Adaptable — lo elige el LLM"]
+        A1["QUÉ logros se cuentan<br/>bajo cada empleo"]
+        A2["Cómo se reformulan<br/><i>sin inventar</i>"]
+        A3["El orden de las habilidades<br/><i>por relevancia al JD</i>"]
+    end
+    FIJO --> CV["📄 CV"]
+    ADAPTA --> CV
+
+    style CV fill:#065f46,stroke:#34d399,color:#fff
+```
+
+Un empleo entra al CV aunque el LLM no eligiera ningún logro suyo para esa
+vacante: omitirlo abriría un hueco de fechas sin explicar (ADR-0026). Y las
+habilidades salen de tus etiquetas, no de keywords que el modelo extrae de la
+oferta (ADR-0027).
 
 ---
 
@@ -182,12 +218,14 @@ flowchart TD
     Q -->|no| SETUP["/setup<br/>wizard 3 pasos"]
     Q -->|sí| TAILOR["/tailor<br/>★ home del día a día"]
 
-    SETUP -->|"POST /profiles<br/>+ guarda el id"| BULLETS["/bullets<br/>banco de logros"]
+    SETUP -->|"POST /profiles<br/>+ guarda el id"| EXP["/experiences<br/>empleos: empresa y fechas"]
+    EXP --> BULLETS["/bullets<br/>banco de logros"]
     BULLETS --> TAILOR
     TAILOR -->|"sin bullets (422)"| BULLETS
     TAILOR --> DL["📄 PDF + DOCX"]
 
-    NAV["Header: Tailor · Bullets · Perfil"] -.-> TAILOR
+    NAV["Header: Tailor · Empleos · Bullets · Perfil"] -.-> TAILOR
+    NAV -.-> EXP
     NAV -.-> BULLETS
     NAV -.-> PROFILE["/profile<br/>ver + editar preferencias"]
 

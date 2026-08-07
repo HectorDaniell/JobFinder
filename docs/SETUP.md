@@ -1,6 +1,6 @@
 # JobFinder — Guía de instalación y setup
 
-> Última actualización: 2026-07-31 · Arquitectura: Node + TypeScript + Docker + Postgres
+> Última actualización: 2026-08-06 · Arquitectura: Node + TypeScript + Docker + Postgres
 
 ---
 
@@ -190,22 +190,31 @@ jobfinder-redis Up ...
 
 > Si algo falla, revisa que **Docker Desktop esté abierto** y corriendo.
 
-### 4.2 Crear la base de datos y aplicar migraciones (SOLO LA PRIMERA VEZ)
+### 4.2 Crear la base de datos y aplicar migraciones
 
 ```bash
 pnpm run migrate
 ```
 
-Esto crea las tablas (job, profile, bullet, etc.) en Postgres. **Salida esperada:**
+Esto aplica las migraciones **pendientes** (crea las tablas la primera vez).
+**Salida esperada:**
 ```
-✓ Migration completed: 0001_create_tables.sql
+⏳ Running migrations...
+✅ Migrations completed successfully!
 ```
 
-**Importante:** Ejecuta esto **UNA SOLA VEZ**. Los días siguientes, ya no lo necesitas (las tablas ya existen).
+**Es seguro ejecutarlo siempre.** Drizzle lleva un registro de las migraciones ya
+aplicadas (`drizzle.__drizzle_migrations`), así que volver a correrlo cuando no hay
+nada pendiente no hace nada.
 
-Solo vuelves a ejecutarlo si:
-- Borraste la BD: `docker compose down -v`
-- Hay nuevas migraciones en el repositorio (alguien escribió cambios al schema)
+En el día a día no hace falta, pero **sí después de un `git pull`**: si alguien
+añadió una migración, tu BD se queda atrás sin avisar. Migraciones actuales:
+
+| Migración | Qué hace |
+|---|---|
+| `0000_fat_toad_men` | Tablas iniciales |
+| `0001_add_experience` | Tabla `experience` + `bullet.experience_id` |
+| `0002_fix_jsonb_double_encoding` | Repara el JSON guardado como cadena (ADR-0024) |
 
 ### 4.3 Levantar las apps (dos opciones)
 
@@ -453,7 +462,8 @@ docker compose -f docker-compose.prod.yml up
 3. ✅ Leer [ARQUITECTURA.md](./ARQUITECTURA.md) para entender el diseño.
 4. 🚀 **Usar la app** (la Fase 1 ya está construida):
    - http://localhost:3000 → crea tu perfil (3 pasos).
-   - Carga tu banco de bullets.
+   - Añade tus **empleos** en *Empleos*: dan empresa y fechas al CV.
+   - Carga tu banco de bullets y asigna cada uno a su empleo.
    - Pega una oferta en la pantalla *Tailor* → descarga el CV y la carta en PDF/DOCX.
    - Sin `ANTHROPIC_API_KEY`, pon `USE_FAKE_LLM="true"` para recorrer el flujo
      igualmente (los documentos generados son reales).

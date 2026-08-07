@@ -1,6 +1,7 @@
 # JobFinder — Roadmap de implementación (Fase 1: Tailoring)
 
 > Estado: **Fase 1 COMPLETADA** (sprints 0–5) · Inicio: 2026-06-22 · Cierre: 2026-07-31
+> Endurecida con uso real en el **Sprint 6** (2026-08-06), fuera del plan original.
 >
 > Este documento es el **plan** original. Para lo que realmente se construyó y las
 > desviaciones respecto al plan, ver [PROGRESS.md](./PROGRESS.md).
@@ -396,12 +397,18 @@ Si tuvieras ayuda, podrías **paralelizar 2 y 3** (LLM + DocGen en paralelo), ah
 - [x] Sistema genera cover letter adaptada
 - [x] Usuario descarga PDF y DOCX
 - [x] PDF/DOCX no contienen datos inventados (guardrails anti-invención en `llm`)
-- [ ] Tasa de error < 5% *(pendiente de medir en uso real con Claude)*
+- [ ] Tasa de error < 5% *(sin medir. El uso real destapó dos fallos —prompts
+      ausentes en el `dist` y falsos positivos del anti-invención—, ambos
+      corregidos en el Sprint 6, pero no se lleva un registro sistemático)*
 
 ### Métrica de éxito:
 - Tiempo inicio a descarga de documentos: **< 10 segundos** (UI + API + Claude + DocGen)
-  → *pendiente de medir contra Claude real; con el LLM falso es < 1 s.*
-- Costo por tailor: **< $0.05 USD** (tokens Claude) → *pendiente de medir.*
+  → *sin medir. Cualitativamente son decenas de segundos, no menos de 10: dominan
+  las dos llamadas a Claude, que ya van en paralelo. Con el LLM falso es < 1 s.*
+- Costo por tailor: **< $0.05 USD** (tokens Claude) → *sin medir. `CostLogger` ya
+  calcula el coste por llamada, pero su `usageSink` no está cableado a ningún
+  repositorio, así que el dato se pierde. Medirlo requiere `LlmUsageRepository`
+  (la tabla `llm_usage` ya existe en el schema).*
 
 ### Desviaciones respecto al plan
 - **PDF**: se usó `pdfkit` en vez de Puppeteer (ADR-0014) → sin Chromium.
@@ -409,6 +416,21 @@ Si tuvieras ayuda, podrías **paralelizar 2 y 3** (LLM + DocGen en paralelo), ah
   neutral al formato (ADR-0015).
 - **Tests e2e de la API**: `app.inject()` de Fastify en vez de Supertest.
 - **`DocumentRepository`** (persistir los archivos generados) se difirió a la Fase 3.
+- **Entidad `Experience`**: no estaba en el plan. El plan asumía que un banco de
+  bullets bastaba para un CV, pero sin empresa ni fechas el documento salía como
+  una lista plana de logros. Se añadió en el Sprint 6.
+
+### Añadido fuera del plan (Sprint 6)
+
+El plan cubría *construir* la Fase 1; nada de esto se ve hasta que la usas contra
+Claude con datos propios. Detalle en [PROGRESS.md](./PROGRESS.md) § Sesión 8:
+
+- Entidad `Experience` + CV agrupado por empresa, proyectos y formación.
+- Anti-invención recalibrado (ADR-0023) y tolerante a fallos parciales (ADR-0025).
+- La estructura del CV deja de filtrarse por relevancia (ADR-0026).
+- Las habilidades salen de los tags curados, no del LLM (ADR-0027).
+- Skeleton de carga y botones de descarga legibles.
+- Deuda del `jsonb` doblemente codificado, saldada (ADR-0024).
 
 ---
 

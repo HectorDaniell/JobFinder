@@ -1,6 +1,6 @@
 # Project Structure
 
-> Estructura **real** del repositorio (actualizada al cierre de la Fase 1).
+> Estructura **real** del repositorio (actualizada al cierre del Sprint 6).
 > Lo marcado con ⬜ existe como carpeta/esqueleto pero se implementa en fases futuras.
 
 ```
@@ -12,7 +12,7 @@ jobfinder/
 │   ├── PROGRESS.md         # Log de lo realmente construido  ← estado actual
 │   ├── FLUJO.md            # Diagramas: el recorrido completo end-to-end
 │   ├── SETUP.md            # Instalación y puesta en marcha
-│   └── adr/                # Architecture Decision Records (0009–0022)
+│   └── adr/                # Architecture Decision Records (0009–0027)
 │
 ├── apps/
 │   ├── api/                        # REST API (NestJS + Fastify) — adaptador de ENTRADA
@@ -27,6 +27,7 @@ jobfinder/
 │   │   │   │   ├── pipes/          # ZodValidationPipe (valida la entrada)
 │   │   │   │   └── filters/        # DomainExceptionFilter (errores → HTTP)
 │   │   │   ├── profiles/           # CRUD de perfil
+│   │   │   ├── experiences/        # CRUD de empleos (anidado bajo perfil)
 │   │   │   ├── bullets/            # CRUD de bullets (anidado bajo perfil)
 │   │   │   ├── tailor/             # POST /profiles/:id/tailor
 │   │   │   └── health/
@@ -39,13 +40,16 @@ jobfinder/
 │   │   │   ├── page.tsx            # landing
 │   │   │   ├── setup/              # alta de perfil (wizard 3 pasos)
 │   │   │   ├── tailor/             # pantalla estrella: oferta → CV/carta → descarga
+│   │   │   ├── experiences/        # empleos: dan empresa y fechas a los bullets
 │   │   │   ├── bullets/            # banco de bullets (CRUD)
 │   │   │   └── profile/            # ver perfil / editar preferencias
 │   │   ├── components/
-│   │   │   ├── ui/                 # primitivas de formulario controladas
+│   │   │   ├── ui/                 # primitivas de formulario · DeleteButton · TagInput
 │   │   │   ├── ProfileProvider.tsx # Context del profileId
-│   │   │   └── Header.tsx · ThemeToggle.tsx · BulletForm.tsx · PreferencesFields.tsx
-│   │   ├── lib/                    # api.ts (cliente HTTP) · types.ts · download.ts
+│   │   │   ├── TailorSkeleton.tsx  # carga con la forma del resultado
+│   │   │   ├── DownloadButton.tsx  # descarga con icono y color por formato
+│   │   │   └── Header.tsx · ThemeToggle.tsx · BulletForm.tsx · ExperienceForm.tsx
+│   │   ├── lib/                    # api.ts (cliente HTTP) · types.ts · download.ts · dates.ts
 │   │   └── README.md
 │   │
 │   └── worker/  ⬜                 # colas BullMQ para ingesta programada (Fase 2)
@@ -54,21 +58,24 @@ jobfinder/
 ├── packages/
 │   ├── core/                       # DOMINIO — no depende de nadie
 │   │   ├── src/
-│   │   │   ├── domain/entities/    # Profile · Job · Bullet
+│   │   │   ├── domain/entities/    # Profile · Job · Bullet · Experience
 │   │   │   ├── domain/value-objects/  # JobScore
 │   │   │   ├── ports/              # LlmPort · DocumentPort · JobSourcePort · EmbedderPort
-│   │   │   ├── use-cases/          # TailorDocuments
+│   │   │   ├── use-cases/          # TailorDocuments (compone el CV, no solo orquesta)
 │   │   │   ├── errors/             # DomainError y subclases (con statusCode HTTP)
 │   │   │   └── index.ts            # barrel
 │   │   └── tests/
 │   │
 │   ├── db/                         # Drizzle + Postgres (adaptador de SALIDA)
-│   │   ├── src/schema.ts           # 10 tablas
-│   │   ├── src/repositories/       # Profile · Bullet · Job · JobScore
+│   │   ├── src/schema.ts           # 11 tablas
+│   │   ├── src/columns.ts          # `jsonb` propio, sin doble codificación (ADR-0024)
+│   │   ├── src/repositories/       # Profile · Bullet · Experience · Job · JobScore
+│   │   ├── migrations/             # 0000 inicial · 0001 experience · 0002 fix jsonb
 │   │   └── scripts/                # migrate.js · seed.ts
 │   │
 │   ├── llm/                        # Claude (adaptador de SALIDA)
-│   │   └── src/claude/             # client · adapter · guardrails · prompts/*.txt
+│   │   ├── src/claude/             # client · adapter · guardrails · prompts/*.txt
+│   │   └── scripts/copy-prompts.js # los .txt al dist (tsc no copia lo que no es .ts)
 │   │
 │   ├── documents/                  # PDF/DOCX ATS-friendly (adaptador de SALIDA)
 │   │   └── src/                    # model/ (mappers puros) · exporters/ · adapter.ts
