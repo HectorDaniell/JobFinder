@@ -1,7 +1,14 @@
 import 'dotenv/config';
 import { randomUUID } from 'crypto';
-import { db, ProfileRepository, BulletRepository, JobRepository, source } from '../src/index';
-import { Profile, Bullet, Job } from '../../core/src/index';
+import {
+  db,
+  ProfileRepository,
+  BulletRepository,
+  ExperienceRepository,
+  JobRepository,
+  source,
+} from '../src/index';
+import { Profile, Bullet, Experience, Job } from '../../core/src/index';
 
 async function seed() {
   console.log('🌱 Sembrando datos de prueba...\n');
@@ -40,52 +47,99 @@ async function seed() {
     const savedProfile = await profileRepo.create(profile);
     console.log(`✅ Perfil creado: ${savedProfile.fullName} (ID: ${savedProfile.id})`);
 
-    /* Crear bullets de experiencia */
+    /* Crear los contenedores: 2 empleos + 1 educación. Todo bullet pertenece a
+       uno de estos — ya no hay bullets "sueltos" (ver ADR-0028). */
+    const experienceRepo = new ExperienceRepository(db);
+
+    const jobA = await experienceRepo.create(
+      new Experience({
+        id: randomUUID(),
+        profileId: savedProfile.id,
+        kind: 'job',
+        organization: 'TechCorp Spain',
+        title: 'Senior Backend Developer',
+        startDate: new Date('2023-01-01'),
+        endDate: new Date('2024-12-01'),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    );
+
+    const jobB = await experienceRepo.create(
+      new Experience({
+        id: randomUUID(),
+        profileId: savedProfile.id,
+        kind: 'job',
+        organization: 'CloudSystems Inc',
+        title: 'Tech Lead',
+        startDate: new Date('2025-01-01'),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    );
+
+    const education = await experienceRepo.create(
+      new Experience({
+        id: randomUUID(),
+        profileId: savedProfile.id,
+        kind: 'education',
+        organization: 'Coursera',
+        title: 'TypeScript Advanced Types y arquitectura de microservicios',
+        startDate: new Date('2024-06-01'),
+        endDate: new Date('2024-06-01'),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    );
+
+    console.log(`✅ 3 contenedores creados (2 empleos + 1 educación)\n`);
+
+    /* Crear bullets de experiencia, cada uno enlazado a su contenedor */
     const bullets = [
       {
+        experienceId: jobA.id,
         textEs:
           'Diseñé y desarrollé una API REST escalable en NestJS que maneja 10k RPS con latencia < 100ms',
         textEn:
           'Designed and developed a scalable REST API in NestJS handling 10k RPS with latency < 100ms',
         skills: ['NestJS', 'TypeScript', 'PostgreSQL', 'Docker', 'Performance'],
         category: 'experience' as const,
-        sourceRole: 'Senior Backend Developer',
       },
       {
+        experienceId: jobB.id,
         textEs:
           'Implementé un sistema de logging y monitoreo con ELK Stack reduciendo MTTR en 70%',
         textEn:
           'Implemented logging and monitoring system with ELK Stack reducing MTTR by 70%',
         skills: ['Elasticsearch', 'Logging', 'Monitoring', 'DevOps'],
         category: 'achievement' as const,
-        sourceRole: 'Tech Lead',
       },
       {
+        experienceId: jobA.id,
         textEs:
           'Migré base de datos de 200GB desde MySQL a PostgreSQL sin downtime usando replicación lógica',
         textEn:
           'Migrated 200GB database from MySQL to PostgreSQL with zero downtime using logical replication',
         skills: ['PostgreSQL', 'MySQL', 'Database Migration', 'High Availability'],
         category: 'achievement' as const,
-        sourceRole: 'DBA Engineer',
       },
       {
+        experienceId: jobB.id,
         textEs:
           'Mentoricé 3 desarrolladores junior en buenas prácticas de arquitectura limpia y testing',
         textEn:
           'Mentored 3 junior developers in clean architecture and testing best practices',
         skills: ['Mentoring', 'Clean Architecture', 'Testing'],
         category: 'experience' as const,
-        sourceRole: 'Tech Lead',
       },
       {
+        experienceId: education.id,
         textEs:
           'Certificado en TypeScript Advanced Types y arquitectura de microservicios por Coursera',
         textEn:
           'Certified in TypeScript Advanced Types and microservices architecture by Coursera',
         skills: ['TypeScript', 'Microservices', 'Architecture'],
-        category: 'education' as const,
-        sourceRole: 'Self-taught',
+        category: 'achievement' as const,
       },
     ];
 
@@ -94,11 +148,11 @@ async function seed() {
       const bullet = new Bullet({
         id: randomUUID(),
         profileId: savedProfile.id,
+        experienceId: bulletData.experienceId,
         textEs: bulletData.textEs,
         textEn: bulletData.textEn,
         skills: bulletData.skills,
         category: bulletData.category,
-        sourceRole: bulletData.sourceRole,
         metrics: {
           yearsExperience: 5,
           teamSize: 8,

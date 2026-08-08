@@ -29,7 +29,8 @@ export const profile = pgTable('profile', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// ============ Experience (a job held: gives bullets their context) ============
+// ============ Experience (a container: a job, a project, or a degree —
+// gives bullets their context. See ADR-0026/0028 and core's Experience.ts) ============
 export const experience = pgTable(
   'experience',
   {
@@ -37,11 +38,15 @@ export const experience = pgTable(
     profileId: uuid('profile_id')
       .notNull()
       .references(() => profile.id, { onDelete: 'cascade' }),
-    company: text('company').notNull(),
-    role: text('role').notNull(),
+    kind: text('kind').notNull(), // 'job' | 'project' | 'education'
+    // Reinterpreted per kind: employer / project context / institution.
+    organization: text('organization').notNull(),
+    // Reinterpreted per kind: role / project name / degree.
+    title: text('title').notNull(),
     location: text('location'),
+    url: text('url'), // only meaningful for kind='project'
     startDate: timestamp('start_date').notNull(),
-    endDate: timestamp('end_date'), // null = still working here
+    endDate: timestamp('end_date'), // null = still ongoing
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
@@ -58,16 +63,17 @@ export const bullet = pgTable(
     profileId: uuid('profile_id')
       .notNull()
       .references(() => profile.id, { onDelete: 'cascade' }),
-    // Nullable: project and education bullets belong to no employer. On delete
-    // we only unlink (SET NULL) — losing a job must never delete the achievement.
-    experienceId: uuid('experience_id').references(() => experience.id, {
-      onDelete: 'set null',
-    }),
+    // NOT NULL: every bullet belongs to a container (job, project or degree) —
+    // there is no "loose" bullet anymore, so CASCADE is the only consistent
+    // choice: a bullet without its container has nothing left to mean. The web
+    // warns the user before deleting a container that still has bullets.
+    experienceId: uuid('experience_id')
+      .notNull()
+      .references(() => experience.id, { onDelete: 'cascade' }),
     textEs: text('text_es').notNull(),
     textEn: text('text_en').notNull(),
     skills: text('skills').array(), // Array of skill tags
-    category: text('category').notNull(), // 'experience' | 'achievement' | 'project' | 'education'
-    sourceRole: text('source_role'),
+    category: text('category').notNull(), // 'experience' | 'achievement'
     metrics: jsonb('metrics'), // { metric_name: value }
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),

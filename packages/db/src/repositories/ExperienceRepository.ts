@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { Experience } from '@jobfinder/core';
+import { Experience, type ExperienceKind } from '@jobfinder/core';
 import * as schema from '../schema';
 
 type DbExperience = typeof schema.experience.$inferSelect;
@@ -14,9 +14,11 @@ export class ExperienceRepository {
     const dbInsert: DbExperienceInsert = {
       id: experience.id,
       profileId: experience.profileId,
-      company: experience.company,
-      role: experience.role,
+      kind: experience.kind,
+      organization: experience.organization,
+      title: experience.title,
       location: experience.location,
+      url: experience.url,
       startDate: experience.startDate,
       endDate: experience.endDate,
     };
@@ -35,7 +37,9 @@ export class ExperienceRepository {
     return this.mapFromDb(row);
   }
 
-  /* Todas las experiencias de un perfil, ordenadas como en un CV: la más reciente primero */
+  /* Todos los contenedores de un perfil (empleos, proyectos y educación),
+     ordenados como en un CV: el más reciente primero. Quien consuma esto agrupa
+     por `kind` para las 3 secciones del CV; ver buildResumeModel. */
   async findByProfileId(profileId: string): Promise<Experience[]> {
     const rows = await this.db.query.experience.findMany({
       where: eq(schema.experience.profileId, profileId),
@@ -44,14 +48,16 @@ export class ExperienceRepository {
     return rows.map((row) => this.mapFromDb(row)).sort(Experience.byMostRecent);
   }
 
-  /* Actualiza una experiencia existente */
+  /* Actualiza un contenedor existente. `kind` no se actualiza: cambiar de tipo
+     (p. ej. un empleo a proyecto) no es una edición, es borrar y crear otro. */
   async update(experience: Experience): Promise<Experience> {
     const updated = await this.db
       .update(schema.experience)
       .set({
-        company: experience.company,
-        role: experience.role,
+        organization: experience.organization,
+        title: experience.title,
         location: experience.location,
+        url: experience.url,
         startDate: experience.startDate,
         endDate: experience.endDate ?? null, // null explícito: "volvió a ser el actual"
         updatedAt: new Date(),
@@ -66,8 +72,9 @@ export class ExperienceRepository {
     return this.mapFromDb(updated[0]);
   }
 
-  /* Borra la experiencia. Los bullets NO se borran: su experience_id queda en
-     NULL (ON DELETE SET NULL) — perder un empleo no debe perder los logros. */
+  /* Borra el contenedor. Sus bullets se borran CON ÉL (ON DELETE CASCADE): ya
+     no pueden quedar huérfanos, porque experience_id es obligatorio. El
+     controller avisa al usuario antes de borrar uno que todavía tenga bullets. */
   async delete(id: string): Promise<void> {
     await this.db.delete(schema.experience).where(eq(schema.experience.id, id));
   }
@@ -76,11 +83,13 @@ export class ExperienceRepository {
     return new Experience({
       id: row.id,
       profileId: row.profileId,
-      company: row.company,
-      role: row.role,
+      kind: row.kind as ExperienceKind,
+      organization: row.organization,
+      title: row.title,
       location: row.location ?? undefined,
+      url: row.url ?? undefined,
       startDate: row.startDate,
-      endDate: row.endDate ?? undefined, // undefined = trabajo actual
+      endDate: row.endDate ?? undefined, // undefined = sigue en curso
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });

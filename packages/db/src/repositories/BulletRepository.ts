@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { Bullet } from '@jobfinder/core';
+import { Bullet, type BulletCategory } from '@jobfinder/core';
 import * as schema from '../schema';
 
 type DbBullet = typeof schema.bullet.$inferSelect;
@@ -19,7 +19,6 @@ export class BulletRepository {
       textEn: bullet.textEn,
       skills: bullet.skills,
       category: bullet.category,
-      sourceRole: bullet.sourceRole,
       metrics: bullet.metrics as unknown as Record<string, unknown>,
     };
 
@@ -55,12 +54,11 @@ export class BulletRepository {
     const updated = await this.db
       .update(schema.bullet)
       .set({
-        experienceId: bullet.experienceId ?? null, // null explícito: se desvinculó
+        experienceId: bullet.experienceId,
         textEs: bullet.textEs,
         textEn: bullet.textEn,
         skills: bullet.skills,
         category: bullet.category,
-        sourceRole: bullet.sourceRole,
         metrics: bullet.metrics as unknown as Record<string, unknown>,
         updatedAt: new Date(),
       })
@@ -90,12 +88,11 @@ export class BulletRepository {
     return new Bullet({
       id: row.id,
       profileId: row.profileId,
-      experienceId: row.experienceId ?? undefined,
+      experienceId: row.experienceId,
       textEs: row.textEs,
       textEn: row.textEn,
       skills: row.skills ?? [],
-      category: row.category as 'experience' | 'achievement' | 'project' | 'education',
-      sourceRole: row.sourceRole ?? undefined,
+      category: row.category as BulletCategory,
       metrics: (row.metrics as Record<string, string | number>) ?? undefined,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
