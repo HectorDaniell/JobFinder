@@ -34,8 +34,8 @@ export interface ExperienceProvider {
 
 /**
  * El banco de bullets del perfil. El LLM ya lo usa por dentro para SELECCIONAR;
- * el caso de uso lo necesita aparte para las partes del CV que NO se adaptan a
- * la vacante (hoy: la educación, ver `withEducation`).
+ * el caso de uso lo necesita aparte para garantizar que ningún contenedor del
+ * historial quede mudo (ver `withGuaranteedCoverage`).
  */
 export interface BulletProvider {
   findByProfileId(profileId: string): Promise<Bullet[]>;
@@ -84,7 +84,10 @@ export class TailorDocuments {
     // 3. Componer el CV final. Lo que el LLM devuelve es la parte ADAPTADA a la
     //    vacante; el resto son reglas de negocio del CV, y por eso viven aquí
     //    en el caso de uso y no en el adapter de documentos.
-    const cv = withCuratedSkills(withEducation(tailored, bank, lang), job);
+    const cv = withCuratedSkills(
+      withGuaranteedCoverage(tailored, bank, experiences, job, lang),
+      job
+    );
 
     // 4. Convertir a archivos: un CV y una carta por cada formato pedido.
     //    (La generación es local y rápida; secuencial se lee mejor.)
@@ -99,27 +102,57 @@ export class TailorDocuments {
 }
 
 /**
- * Garantiza que la formación esté SIEMPRE en el CV, la haya seleccionado el LLM
- * o no. Un título es un hecho del candidato, no un argumento que compita por
- * relevancia con la vacante: si se filtra, el CV sale sin estudios y parece
- * incompleto. Se añaden solo los que falten, para no duplicar los que el LLM ya
- * eligió (y reformuló).
+ * COBERTURA GARANTIZADA — ningún contenedor del historial queda mudo.
+ *
+ * El LLM optimiza "los bullets más relevantes para esta vacante", y esa
+ * pregunta no es la misma que "el mejor CV para esta vacante". Un CV real
+ * nunca omite un trabajo ni lo deja en blanco: dice MENOS de lo menos
+ * relevante, nunca nada. Un contenedor (empleo, proyecto o título) es un hecho
+ * del candidato — igual que la educación ya lo era antes de esta regla — así
+ * que no debería poder desaparecer solo porque para ESTA oferta en concreto no
+ * ganó la competencia por relevancia.
+ *
+ * Por cada contenedor sin ningún bullet seleccionado, se añade
+ * DETERMINÍSTICAMENTE el que mejor solapa en skills con la vacante — nunca por
+ * el LLM, para no gastar otra llamada ni abrir otra vía de invención. Sigue
+ * siendo un bullet REAL del banco: la garantía de "nunca inventa" no se toca.
+ *
+ * Un contenedor sin ningún bullet en el banco (creado pero aún sin logros
+ * cargados) se queda sin línea: no hay nada real que ofrecerle, y esa es una
+ * señal correcta para que el usuario complete su banco, no algo que rellenar.
  */
-function withEducation(cv: TailoredCv, bank: Bullet[], lang: 'es' | 'en'): TailoredCv {
-  const alreadyIn = cv.bullets.some((b) => b.category === 'education');
-  if (alreadyIn) return cv;
+function withGuaranteedCoverage(
+  cv: TailoredCv,
+  bank: Bullet[],
+  experiences: Experience[],
+  job: Job,
+  lang: 'es' | 'en'
+): TailoredCv {
+  const covered = new Set(cv.bullets.map((b) => b.experienceId));
+  const jd = job.description.toLowerCase();
 
-  const education: TailoredBullet[] = bank
-    .filter((b) => b.category === 'education')
-    .map((b) => ({
-      text: b.getText(lang),
-      category: b.category,
-      experienceId: b.experienceId,
-      sourceRole: b.sourceRole,
-      skills: b.skills,
-    }));
+  const additions: TailoredBullet[] = [];
+  for (const exp of experiences) {
+    if (covered.has(exp.id)) continue;
 
-  return education.length === 0 ? cv : { ...cv, bullets: [...cv.bullets, ...education] };
+    const candidates = bank.filter((b) => b.experienceId === exp.id);
+    if (candidates.length === 0) continue;
+
+    const best = candidates.reduce((a, b) => (skillOverlap(b, jd) > skillOverlap(a, jd) ? b : a));
+    additions.push({
+      text: best.getText(lang),
+      category: best.category,
+      experienceId: best.experienceId,
+      skills: best.skills,
+    });
+  }
+
+  return additions.length === 0 ? cv : { ...cv, bullets: [...cv.bullets, ...additions] };
+}
+
+/** Cuántas skills del bullet aparecen literalmente en la descripción de la vacante. */
+function skillOverlap(bullet: Bullet, jobDescriptionLower: string): number {
+  return bullet.skills.filter((s) => jobDescriptionLower.includes(s.toLowerCase())).length;
 }
 
 /** Tope de la línea de habilidades: más allá deja de leerse y pasa a ser ruido. */

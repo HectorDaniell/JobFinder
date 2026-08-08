@@ -52,12 +52,28 @@ const job = new Job({
   ingestedAt: new Date('2026-07-01'),
 });
 
-const experience = new Experience({
+// Dos contenedores a propósito: uno que el LLM cubre por defecto (jobExp) y
+// otro que no (eduExp) — así los tests de cobertura garantizada no necesitan
+// fixtures aparte, solo variar qué hay en el BANCO.
+const jobExp = new Experience({
   id: 'exp-1',
   profileId: 'p-1',
-  company: 'PrevCo',
-  role: 'Backend Developer',
+  kind: 'job',
+  organization: 'PrevCo',
+  title: 'Backend Developer',
   startDate: new Date('2024-01-01'),
+  createdAt: new Date('2026-07-01'),
+  updatedAt: new Date('2026-07-01'),
+});
+
+const eduExp = new Experience({
+  id: 'exp-edu',
+  profileId: 'p-1',
+  kind: 'education',
+  organization: 'Universidad X',
+  title: 'BSc in Systems Engineering',
+  startDate: new Date('2020-01-01'),
+  endDate: new Date('2024-01-01'),
   createdAt: new Date('2026-07-01'),
   updatedAt: new Date('2026-07-01'),
 });
@@ -66,26 +82,30 @@ const tailoredCv: TailoredCv = {
   content: '# CV',
   bullets: [
     { text: 'Built X', category: 'experience', experienceId: 'exp-1', skills: ['Node.js'] },
-    { text: 'Led Y', category: 'achievement', skills: ['Node.js', 'Docker'] },
+    { text: 'Led Y', category: 'achievement', experienceId: 'exp-1', skills: ['Node.js', 'Docker'] },
   ],
   keywords: ['Node.js', 'PostgreSQL'],
 };
 
-/** Fábrica corta: solo importan category/sourceRole en estos tests. */
-const bankBullet = (id: string, category: Bullet['category'], text: string) =>
+/** Fábrica corta para bullets del banco: solo importan category/experienceId/skills. */
+const bankBullet = (
+  id: string,
+  category: Bullet['category'],
+  text: string,
+  experienceId: string,
+  skills: string[] = []
+) =>
   new Bullet({
     id,
     profileId: 'p-1',
     textEs: text,
     textEn: text,
-    skills: [],
+    skills,
     category,
-    sourceRole: 'Universidad X',
+    experienceId,
     createdAt: new Date('2026-07-01'),
     updatedAt: new Date('2026-07-01'),
   });
-
-const educationBullet = bankBullet('b-edu', 'education', 'BSc in Systems Engineering');
 
 const artifact = (filename: string): DocumentArtifact => ({
   bytes: new Uint8Array([1, 2, 3]),
@@ -102,11 +122,13 @@ let documents: DocumentPort;
 
 beforeEach(() => {
   profiles = { findById: vi.fn().mockResolvedValue(profile) };
-  experiences = { findByProfileId: vi.fn().mockResolvedValue([experience]) };
-  // Banco SIN educación por defecto: así el CV pasa intacto y los tests de
-  // orquestación pueden comparar por referencia. La educación tiene su test.
+  experiences = { findByProfileId: vi.fn().mockResolvedValue([jobExp, eduExp]) };
+  // Banco con UN bullet, solo para exp-1: eduExp queda sin candidatos por
+  // defecto, así los tests de orquestación pueden comparar por referencia sin
+  // que la cobertura garantizada les añada nada de más. Los tests de cobertura
+  // sobreescriben esto.
   bullets = {
-    findByProfileId: vi.fn().mockResolvedValue([bankBullet('b-1', 'experience', 'Built X')]),
+    findByProfileId: vi.fn().mockResolvedValue([bankBullet('b-1', 'experience', 'Built X', 'exp-1')]),
   };
   llm = {
     tailorCv: vi.fn().mockResolvedValue(tailoredCv),
@@ -135,7 +157,8 @@ describe('TailorDocuments', () => {
     expect(llm.tailorCv).toHaveBeenCalledWith(job, profile, 'en');
     expect(llm.tailorCoverLetter).toHaveBeenCalledWith(job, profile, 'en');
     // El CV ya no es el objeto que devolvió el LLM: el caso de uso lo COMPONE
-    // (educación + skills curadas). Los bullets adaptados sí pasan intactos.
+    // (cobertura garantizada + skills curadas). Los bullets adaptados sí pasan
+    // intactos porque eduExp no tiene candidatos en el banco de este test.
     expect(result.cv.bullets).toEqual(tailoredCv.bullets);
     expect(result.cv.content).toBe(tailoredCv.content);
     expect(result.coverLetter).toBe('Dear Hiring Manager, ...');
@@ -153,42 +176,65 @@ describe('TailorDocuments', () => {
     expect(documents.generateCv).toHaveBeenCalledWith(
       result.cv,
       profile,
-      [experience],
+      [jobExp, eduExp],
       'en',
       'pdf'
     );
   });
 
-  it('añade la educación del banco aunque el LLM no la haya seleccionado', async () => {
-    bullets.findByProfileId = vi.fn().mockResolvedValue([educationBullet]);
+  it('cobertura garantizada: completa con el mejor bullet del banco un contenedor sin selección', async () => {
+    bullets.findByProfileId = vi.fn().mockResolvedValue([
+      bankBullet('b-1', 'experience', 'Built X', 'exp-1'),
+      bankBullet('b-edu', 'achievement', 'BSc in Systems Engineering', 'exp-edu'),
+    ]);
     const useCase = new TailorDocuments(profiles, experiences, bullets, llm, documents);
 
     const result = await useCase.execute({ profileId: 'p-1', job, lang: 'en', formats: ['pdf'] });
 
-    // Los 2 bullets adaptados por el LLM + el de educación, con su contexto.
+    // Los 2 bullets adaptados por el LLM (exp-1) + el añadido para exp-edu, que
+    // el LLM no seleccionó.
     expect(result.cv.bullets).toHaveLength(3);
     expect(result.cv.bullets[2]).toEqual({
       text: 'BSc in Systems Engineering',
-      category: 'education',
-      experienceId: undefined,
-      sourceRole: 'Universidad X',
+      category: 'achievement',
+      experienceId: 'exp-edu',
       skills: [],
     });
   });
 
-  it('no duplica la educación si el LLM ya la seleccionó', async () => {
-    bullets.findByProfileId = vi.fn().mockResolvedValue([educationBullet]);
+  it('cobertura garantizada: con varios candidatos, elige el de mayor solapamiento con la vacante', async () => {
+    // job.description (fixture, arriba) menciona "Node.js", no "Python".
+    bullets.findByProfileId = vi.fn().mockResolvedValue([
+      bankBullet('b-py', 'achievement', 'Worked with Python', 'exp-edu', ['Python']),
+      bankBullet('b-node', 'achievement', 'Worked with Node.js', 'exp-edu', ['Node.js']),
+    ]);
+    llm.tailorCv = vi.fn().mockResolvedValue({ ...tailoredCv, bullets: [] }); // el LLM no cubrió nada
+
+    const useCase = new TailorDocuments(profiles, experiences, bullets, llm, documents);
+    const result = await useCase.execute({ profileId: 'p-1', job, lang: 'en', formats: ['pdf'] });
+
+    // exp-1 no tiene candidatos en el banco de este test, así que queda sin
+    // línea; exp-edu sí, y gana el bullet cuya skill aparece en la oferta.
+    expect(result.cv.bullets).toHaveLength(1);
+    expect(result.cv.bullets[0].text).toBe('Worked with Node.js');
+  });
+
+  it('cobertura garantizada: no completa un contenedor que el LLM ya cubrió', async () => {
+    bullets.findByProfileId = vi.fn().mockResolvedValue([
+      bankBullet('b-edu', 'achievement', 'BSc in Systems Engineering', 'exp-edu'),
+    ]);
     llm.tailorCv = vi.fn().mockResolvedValue({
       ...tailoredCv,
       bullets: [
-        { text: 'BSc, reformulado', category: 'education', sourceRole: 'Universidad X', skills: [] },
+        { text: 'BSc, reformulado', category: 'achievement', experienceId: 'exp-edu', skills: [] },
       ],
     });
     const useCase = new TailorDocuments(profiles, experiences, bullets, llm, documents);
 
     const result = await useCase.execute({ profileId: 'p-1', job, lang: 'en', formats: ['pdf'] });
 
-    // Gana la versión del LLM: ya adaptada a la vacante.
+    // Gana la versión del LLM, ya adaptada a la vacante — no se añade una
+    // segunda línea para el mismo contenedor.
     expect(result.cv.bullets).toHaveLength(1);
     expect(result.cv.bullets[0].text).toBe('BSc, reformulado');
   });
@@ -209,8 +255,8 @@ describe('TailorDocuments', () => {
       // 'Docker' no está en la descripción del job; 'PostgreSQL' sí, y encima
       // sostiene menos bullets — la relevancia para la vacante manda.
       bullets: [
-        { text: 'a', category: 'experience', skills: ['Docker'] },
-        { text: 'b', category: 'experience', skills: ['Docker', 'PostgreSQL'] },
+        { text: 'a', category: 'experience', experienceId: 'exp-1', skills: ['Docker'] },
+        { text: 'b', category: 'experience', experienceId: 'exp-1', skills: ['Docker', 'PostgreSQL'] },
       ],
     });
     const useCase = new TailorDocuments(profiles, experiences, bullets, llm, documents);
@@ -224,8 +270,8 @@ describe('TailorDocuments', () => {
     llm.tailorCv = vi.fn().mockResolvedValue({
       ...tailoredCv,
       bullets: [
-        { text: 'a', category: 'experience', skills: ['WordPress'] },
-        { text: 'b', category: 'experience', skills: ['Wordpress'] },
+        { text: 'a', category: 'experience', experienceId: 'exp-1', skills: ['WordPress'] },
+        { text: 'b', category: 'experience', experienceId: 'exp-1', skills: ['Wordpress'] },
       ],
     });
     const useCase = new TailorDocuments(profiles, experiences, bullets, llm, documents);
@@ -239,7 +285,7 @@ describe('TailorDocuments', () => {
   it('conserva las keywords del LLM si ningún bullet tiene skills curadas', async () => {
     llm.tailorCv = vi.fn().mockResolvedValue({
       ...tailoredCv,
-      bullets: [{ text: 'a', category: 'experience', skills: [] }],
+      bullets: [{ text: 'a', category: 'experience', experienceId: 'exp-1', skills: [] }],
     });
     const useCase = new TailorDocuments(profiles, experiences, bullets, llm, documents);
 

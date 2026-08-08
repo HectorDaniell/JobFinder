@@ -22,16 +22,14 @@ export interface ExtractedJob {
  * every field but `text` comes from the real bank bullet it matched (resolved
  * by the anti-fabrication guardrail, ADR-0023), never invented.
  *
- * `experienceId` undefined = no linked employer (a project or education
- * bullet); those group under `sourceRole` instead — the free-text context that
- * titles a thesis or a side project. `documents` uses these fields to group the
- * rendered CV into blocks instead of printing a flat list.
+ * `experienceId` is never empty: every bank bullet belongs to a container (a
+ * job, a project, or a degree — see Experience). `documents` groups the
+ * rendered CV into blocks by that container instead of printing a flat list.
  */
 export interface TailoredBullet {
   text: string;
   category: BulletCategory;
-  experienceId?: string;
-  sourceRole?: string;
+  experienceId: string;
   /** The bank bullet's curated skill tags. Source of the CV's skills line. */
   skills: string[];
 }
