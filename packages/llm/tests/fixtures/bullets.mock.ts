@@ -10,9 +10,13 @@
  * ESTRUCTURA DE UN BULLET:
  * - textEs / textEn: Descripción en dos idiomas
  * - skills: Array de skills mencionados
- * - category: experience | achievement | education | certification
- * - sourceRole: De qué rol viene
+ * - category: experience | achievement (ver Bullet.ts — ya no distingue
+ *   proyecto/educación, eso lo hace el `kind` del contenedor)
+ * - experienceId: el contenedor al que pertenece (obligatorio)
  * - metrics: Datos cuantitativos opcionales
+ *
+ * Los ids de experienceId agrupan por el mismo criterio que antes expresaba
+ * `sourceRole` como texto libre: bullet-002/004/006 comparten "Tech Lead".
  */
 
 import { Bullet } from '@jobfinder/core';
@@ -29,7 +33,7 @@ export const mockBullets: Bullet[] = [
       '10k RPS with latency < 100ms',
     skills: ['NestJS', 'TypeScript', 'REST API', 'Performance', 'Node.js'],
     category: 'experience',
-    sourceRole: 'Senior Backend Developer',
+    experienceId: 'exp-senior-backend',
     metrics: {
       yearsExperience: 5,
       teamSize: 4,
@@ -50,7 +54,7 @@ export const mockBullets: Bullet[] = [
       'reducing MTTR by 70%',
     skills: ['Elasticsearch', 'Logging', 'Monitoring', 'DevOps', 'ELK'],
     category: 'achievement',
-    sourceRole: 'Tech Lead',
+    experienceId: 'exp-tech-lead',
     metrics: {
       yearsExperience: 5,
       teamSize: 8,
@@ -71,7 +75,7 @@ export const mockBullets: Bullet[] = [
       'using logical replication',
     skills: ['PostgreSQL', 'MySQL', 'Database Migration', 'High Availability'],
     category: 'achievement',
-    sourceRole: 'DBA Engineer',
+    experienceId: 'exp-dba',
     metrics: {
       yearsExperience: 4,
       teamSize: 2,
@@ -91,7 +95,7 @@ export const mockBullets: Bullet[] = [
       'Mentored 3 junior developers in clean architecture and automated testing best practices',
     skills: ['Mentoring', 'Clean Architecture', 'Testing', 'Leadership'],
     category: 'experience',
-    sourceRole: 'Tech Lead',
+    experienceId: 'exp-tech-lead',
     metrics: {
       yearsExperience: 5,
       teamSize: 3,
@@ -109,8 +113,8 @@ export const mockBullets: Bullet[] = [
     textEn:
       'Certified in TypeScript Advanced Types and microservices architecture by Coursera',
     skills: ['TypeScript', 'Microservices', 'Architecture'],
-    category: 'education',
-    sourceRole: 'Self-taught',
+    category: 'achievement',
+    experienceId: 'exp-education',
     metrics: {
       yearsExperience: 5,
       teamSize: 0,
@@ -131,7 +135,7 @@ export const mockBullets: Bullet[] = [
       'reducing deployment time by 60%',
     skills: ['Microservices', 'Refactoring', 'Architecture', 'Node.js'],
     category: 'achievement',
-    sourceRole: 'Tech Lead',
+    experienceId: 'exp-tech-lead',
     metrics: {
       yearsExperience: 4,
       teamSize: 6,
@@ -154,12 +158,8 @@ export const mockBulletsBackend = mockBullets.filter((b) =>
   )
 );
 
-/** Bullets orientados a liderazgo */
-export const mockBulletsLeadership = mockBullets.filter((b) =>
-  ['Mentoring', 'Leadership', 'Tech Lead'].some((s) =>
-    b.sourceRole?.includes(s)
-  )
-);
+/** Bullets del contenedor "Tech Lead" (antes agrupados por sourceRole de texto libre) */
+export const mockBulletsLeadership = mockBullets.filter((b) => b.experienceId === 'exp-tech-lead');
 
 /** Un solo bullet (para testing con datos mínimos) */
 export const mockSingleBullet = [mockBullets[0]];

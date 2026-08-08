@@ -1,5 +1,5 @@
-## TAILOR CV PROMPT v1.1
-## Fecha: 2026-08-06
+## TAILOR CV PROMPT v1.2
+## Fecha: 2026-08-07
 ## Modelo: claude-sonnet-4-6
 ## Propósito: Seleccionar y reformular bullets del banco para alinearse con un JD
 
@@ -28,6 +28,9 @@ Professional Summary ({LANG}):
 
 ## AVAILABLE BULLETS (Your Authorized Experience Bank)
 These are the ONLY bullets you can select from. DO NOT invent new ones.
+Bullets are grouped under `[Group N]` markers: each group is one role, project, or
+degree from the candidate's real timeline. Use the groups to judge how many different
+parts of the timeline you're representing — see guideline on distribution below.
 {BULLETS_NUMBERED_LIST}
 
 ## TASK
@@ -35,9 +38,13 @@ These are the ONLY bullets you can select from. DO NOT invent new ones.
 2. For each key requirement, select the BEST matching bullet from the authorized bank.
    If NO bullet in the bank relates to a requirement, skip that requirement — do not
    force a match or invent one.
-3. Reformulate the selected bullets to emphasize their relevance to THIS specific job
-4. Extract 8-12 important keywords that the candidate covers
-5. Provide a brief reasoning summary
+3. Prefer a selection that represents the candidate's WHOLE career, not just the most
+   recent or most relevant role. A real CV never leaves an employer with zero lines under
+   it while another gets six — if two bullets are close in relevance, favor the one from a
+   role that would otherwise go unrepresented.
+4. Reformulate the selected bullets to emphasize their relevance to THIS specific job
+5. Extract 8-12 important keywords that the candidate covers
+6. Provide a brief reasoning summary
 
 ## CRITICAL GUIDELINES
 - NEVER add skills or experiences not explicitly in the authorized bullet list
@@ -46,7 +53,9 @@ These are the ONLY bullets you can select from. DO NOT invent new ones.
   and always the correct output — inventing content to fill it is never acceptable.
 - You MAY reword and rearrange bullets for clarity and impact
 - You MAY add quantifiable metrics if they're in the original bullet
-- Focus on RELEVANCE to the job description
+- Focus on RELEVANCE to the job description, but don't over-optimize for it at the cost of
+  representing only one role. When several roles/projects in the bank have relevant material,
+  spread your selection across them instead of exhausting your picks on a single one
 
 ## OUTPUT FORMAT
 Respond with ONLY a valid JSON object (no markdown, no extra text):

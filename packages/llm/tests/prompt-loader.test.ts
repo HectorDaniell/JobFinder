@@ -63,6 +63,26 @@ describe('fillTailorCvPrompt', () => {
     });
     expect(/\{[A-Z_]+\}/.test(system + user)).toBe(false);
   });
+
+  it('agrupa el banco por contenedor: mismo experienceId, mismo [Group N]', () => {
+    const { user } = fillTailorCvPrompt(INLINE_TEMPLATE, {
+      job: mockJobSeniorBackendEN,
+      profile: mockProfile,
+      bullets: mockBullets,
+      lang: 'en',
+    });
+
+    // bullet-002, 004 y 006 (fixture) comparten experienceId 'exp-tech-lead':
+    // deben caer bajo el MISMO grupo, en vez de uno por bullet.
+    const groups = user.match(/\[Group \d+\]/g);
+    expect(groups?.length).toBe(4); // 4 experienceId distintos en el fixture
+
+    // Todo lo que aparece ENTRE dos marcadores de grupo pertenece a ese grupo.
+    const secondGroupBlock = user.split(/\[Group \d+\]/)[2];
+    expect(secondGroupBlock).toContain('Implemented logging'); // bullet-002
+    expect(secondGroupBlock).toContain('Mentored 3 junior developers'); // bullet-004
+    expect(secondGroupBlock).toContain('Led refactoring of a 2M line monolith'); // bullet-006
+  });
 });
 
 describe('fillTailorCoverLetterPrompt + plantilla .txt real', () => {

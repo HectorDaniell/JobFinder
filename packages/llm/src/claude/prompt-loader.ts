@@ -86,12 +86,46 @@ export function fillTailorCvPrompt(
   const { job, profile, bullets, lang } = vars;
   const values: Record<string, string> = {
     ...baseValues(job, profile, lang),
-    BULLETS_NUMBERED_LIST: bullets.map((b, i) => `${i + 1}. ${b.getText(lang)}`).join('\n'),
+    BULLETS_NUMBERED_LIST: formatBulletBank(bullets, lang),
   };
   return {
     system: fillPlaceholders(extractSection(template, 'SYSTEM MESSAGE'), values),
     user: fillPlaceholders(extractSection(template, 'USER MESSAGE'), values),
   };
+}
+
+/**
+ * Agrupa el banco por contenedor (`bullet.experienceId`) antes de numerarlo, con
+ * una etiqueta ANÓNIMA por grupo — este módulo no conoce el nombre de la empresa
+ * ni del proyecto, eso vive en `Experience` (packages/core), que aquí no hace
+ * falta importar solo para etiquetar.
+ *
+ * El propósito no es identificar la empresa: es que Claude VEA dónde empieza y
+ * termina cada rol, para que la guía del prompt de "repartir la selección"
+ * (v1.2) sea algo que pueda seguir, en vez de una instrucción sin forma de
+ * cumplirse sobre una lista plana sin límites visibles.
+ */
+function formatBulletBank(bullets: Bullet[], lang: 'es' | 'en'): string {
+  const order: string[] = [];
+  const byGroup = new Map<string, Bullet[]>();
+  for (const bullet of bullets) {
+    if (!byGroup.has(bullet.experienceId)) {
+      order.push(bullet.experienceId);
+      byGroup.set(bullet.experienceId, []);
+    }
+    byGroup.get(bullet.experienceId)?.push(bullet);
+  }
+
+  let n = 0;
+  const lines: string[] = [];
+  order.forEach((id, i) => {
+    lines.push(`[Group ${i + 1}]`);
+    for (const bullet of byGroup.get(id) ?? []) {
+      n++;
+      lines.push(`${n}. ${bullet.getText(lang)}`);
+    }
+  });
+  return lines.join('\n');
 }
 
 /**

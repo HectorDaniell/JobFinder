@@ -110,7 +110,6 @@ export class ClaudeAdapter implements LlmPort {
       text: m.text,
       category: m.matchedBullet.category,
       experienceId: m.matchedBullet.experienceId,
-      sourceRole: m.matchedBullet.sourceRole,
       skills: m.matchedBullet.skills,
     }));
 
