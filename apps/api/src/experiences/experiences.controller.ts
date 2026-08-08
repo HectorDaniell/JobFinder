@@ -21,7 +21,8 @@ import {
 } from './experience.schemas';
 
 /**
- * CRUD de experiencias laborales, anidadas bajo el perfil.
+ * CRUD de contenedores (empleos, proyectos y educación), anidados bajo el
+ * perfil. `kind` no cambia tras crear el contenedor — ver UpdateExperienceSchema.
  *
  * Mismo patrón que Bullets: el profileId de la URL verifica PERTENENCIA
  * (getOwned), el controlador habla directo con el repositorio y solo lanza
@@ -100,7 +101,9 @@ export class ExperiencesController {
     @Param('id') id: string
   ): Promise<void> {
     await this.getOwned(profileId, id);
-    // Los bullets sobreviven: su experience_id queda en NULL (ON DELETE SET NULL).
+    // Borra EN CASCADA sus bullets: ya no pueden quedar huérfanos, porque
+    // experience_id es obligatorio (ver ADR-0028). El front avisa antes de
+    // borrar un contenedor que todavía tenga bullets.
     await this.experiences.delete(id);
   }
 

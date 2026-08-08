@@ -54,7 +54,6 @@ export class BulletsController {
     const now = new Date();
     const bullet = new Bullet({
       ...dto,
-      experienceId: dto.experienceId ?? undefined, // null (JSON) -> sin empleo
       id: randomUUID(),
       profileId,
       createdAt: now,
@@ -84,19 +83,19 @@ export class BulletsController {
     @Body(new ZodValidationPipe(UpdateBulletSchema)) dto: UpdateBulletDto
   ): Promise<Bullet> {
     const existing = await this.getOwned(profileId, id);
-    await this.assertExperienceOwned(profileId, dto.experienceId);
+    // Si el PATCH trae experienceId, es un re-enlace a OTRO contenedor: hay que
+    // verificar pertenencia. Si no lo trae, conserva el actual — que ya se
+    // verificó al crearlo (y sigue siendo válido: borrar un contenedor borra
+    // en cascada sus bullets, así que uno que sobrevive nunca queda huérfano).
+    if (dto.experienceId !== undefined) {
+      await this.assertExperienceOwned(profileId, dto.experienceId);
+    }
 
     // update() del repo recibe la entidad COMPLETA: partimos del bullet
     // existente y sobreescribimos solo los campos que llegaron en el PATCH.
-    // experienceId tiene tres estados: ausente = no tocar, null = desvincular,
-    // uuid = enlazar.
-    const experienceId =
-      dto.experienceId === undefined ? existing.experienceId : (dto.experienceId ?? undefined);
-
     const updated = new Bullet({
       ...existing,
       ...dto,
-      experienceId,
       updatedAt: new Date(),
     });
 
@@ -114,15 +113,11 @@ export class BulletsController {
   }
 
   /**
-   * Si se enlaza una experiencia, debe existir y ser del MISMO perfil. Sin esto,
-   * un id ajeno reventaría como violación de FK (500) o —peor— colgaría el
-   * bullet del empleo de otra persona.
+   * El contenedor enlazado debe existir y ser del MISMO perfil. Sin esto, un id
+   * ajeno reventaría como violación de FK (500) o —peor— colgaría el bullet del
+   * historial de otra persona.
    */
-  private async assertExperienceOwned(
-    profileId: string,
-    experienceId: string | null | undefined
-  ): Promise<void> {
-    if (!experienceId) return; // null/ausente: no pertenece a ningún empleo
+  private async assertExperienceOwned(profileId: string, experienceId: string): Promise<void> {
     const experience = await this.experiences.findById(experienceId);
     if (!experience || experience.profileId !== profileId) {
       throw new NotFoundError('Experience', experienceId);

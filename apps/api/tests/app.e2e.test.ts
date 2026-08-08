@@ -5,10 +5,11 @@ import {
   TailorDocuments,
   type Profile,
   type Bullet,
+  type Experience,
   type Preferences,
   type TailorResult,
 } from '@jobfinder/core';
-import { ProfileRepository, BulletRepository } from '@jobfinder/db';
+import { ProfileRepository, BulletRepository, ExperienceRepository } from '@jobfinder/db';
 import { AppModule } from '../src/app.module';
 
 /**
@@ -51,6 +52,30 @@ class FakeProfileRepository {
   }
 }
 
+class FakeExperienceRepository {
+  private store = new Map<string, Experience>();
+  clear() {
+    this.store.clear();
+  }
+  async create(e: Experience) {
+    this.store.set(e.id, e);
+    return e;
+  }
+  async findById(id: string) {
+    return this.store.get(id) ?? null;
+  }
+  async findByProfileId(profileId: string) {
+    return [...this.store.values()].filter((e) => e.profileId === profileId);
+  }
+  async update(e: Experience) {
+    this.store.set(e.id, e);
+    return e;
+  }
+  async delete(id: string) {
+    this.store.delete(id);
+  }
+}
+
 class FakeBulletRepository {
   private store = new Map<string, Bullet>();
   clear() {
@@ -79,10 +104,21 @@ class FakeBulletRepository {
 }
 
 const fakeTailorResult: TailorResult = {
-  cv: { content: '# CV', bullets: ['Lideré X'], keywords: ['Node.js'] },
+  cv: {
+    content: '# CV',
+    bullets: [{ text: 'Lideré X', category: 'achievement', experienceId: 'exp-1', skills: ['Node.js'] }],
+    keywords: ['Node.js'],
+  },
   coverLetter: 'Estimado equipo...',
   // bytes [37,80,68,70] = "%PDF" -> base64 "JVBERg=="
-  files: [{ filename: 'cv.pdf', mimeType: 'application/pdf', bytes: new Uint8Array([37, 80, 68, 70]) }],
+  files: [
+    {
+      filename: 'cv.pdf',
+      mimeType: 'application/pdf',
+      kind: 'cv',
+      bytes: new Uint8Array([37, 80, 68, 70]),
+    },
+  ],
 };
 const fakeTailor = { execute: async () => fakeTailorResult };
 
@@ -105,6 +141,7 @@ const profilePayload = {
 
 // ---------- setup ----------
 const fakeProfiles = new FakeProfileRepository();
+const fakeExperiences = new FakeExperienceRepository();
 const fakeBullets = new FakeBulletRepository();
 let app: NestFastifyApplication;
 
@@ -112,6 +149,8 @@ beforeAll(async () => {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(ProfileRepository)
     .useValue(fakeProfiles)
+    .overrideProvider(ExperienceRepository)
+    .useValue(fakeExperiences)
     .overrideProvider(BulletRepository)
     .useValue(fakeBullets)
     .overrideProvider(TailorDocuments)
@@ -129,12 +168,23 @@ afterAll(async () => {
 
 beforeEach(() => {
   fakeProfiles.clear();
+  fakeExperiences.clear();
   fakeBullets.clear();
 });
 
 /** Crea un perfil vía HTTP y devuelve su id. */
 async function createProfile(): Promise<string> {
   const res = await app.inject({ method: 'POST', url: '/profiles', payload: profilePayload });
+  return res.json().id;
+}
+
+/** Crea un contenedor (empleo) vía HTTP y devuelve su id — todo bullet necesita uno. */
+async function createExperience(profileId: string): Promise<string> {
+  const res = await app.inject({
+    method: 'POST',
+    url: `/profiles/${profileId}/experiences`,
+    payload: { kind: 'job', organization: 'Acme', title: 'Backend Developer', startDate: '2024-01' },
+  });
   return res.json().id;
 }
 
@@ -177,11 +227,18 @@ describe('API (e2e)', () => {
 
   it('bullets anidados: crea (201) y rechaza acceso cruzado (404)', async () => {
     const profileId = await createProfile();
+    const experienceId = await createExperience(profileId);
 
     const bulletRes = await app.inject({
       method: 'POST',
       url: `/profiles/${profileId}/bullets`,
-      payload: { textEs: 'Logro', textEn: 'Achievement', skills: ['Node'], category: 'achievement' },
+      payload: {
+        experienceId,
+        textEs: 'Logro',
+        textEn: 'Achievement',
+        skills: ['Node'],
+        category: 'achievement',
+      },
     });
     expect(bulletRes.statusCode).toBe(201);
     const bulletId = bulletRes.json().id;

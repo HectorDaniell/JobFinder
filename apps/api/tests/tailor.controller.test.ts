@@ -13,7 +13,7 @@ import type { TailorRequestDto } from '../src/tailor/tailor.schema';
 const tailorResult: TailorResult = {
   cv: {
     content: '# CV',
-    bullets: [{ text: 'Lideré X', category: 'achievement', skills: ['Node.js'] }],
+    bullets: [{ text: 'Lideré X', category: 'achievement', experienceId: 'exp-1', skills: ['Node.js'] }],
     keywords: ['Node.js'],
   },
   coverLetter: 'Estimado equipo...',

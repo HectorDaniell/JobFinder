@@ -49,7 +49,6 @@ export function createFakeLlm(bullets: BulletProvider): LlmPort {
         text: b.getText(lang),
         category: b.category,
         experienceId: b.experienceId,
-        sourceRole: b.sourceRole,
         skills: b.skills,
       }));
 

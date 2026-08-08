@@ -9,13 +9,13 @@ import { z } from 'zod';
  */
 
 export const CreateBulletSchema = z.object({
-  /** Empleo al que pertenece. null/ausente = proyecto personal o educación. */
-  experienceId: z.string().uuid().nullish(),
+  /** El contenedor al que pertenece: un empleo, un proyecto, o un grado.
+   *  Obligatorio — todo bullet vive bajo uno, no hay bullets "sueltos". */
+  experienceId: z.string().uuid(),
   textEs: z.string().min(1),
   textEn: z.string().min(1),
   skills: z.array(z.string()),
-  category: z.enum(['experience', 'achievement', 'project', 'education']),
-  sourceRole: z.string().optional(),
+  category: z.enum(['experience', 'achievement']),
   metrics: z.record(z.union([z.string(), z.number()])).optional(),
 });
 
