@@ -6,7 +6,7 @@
  * solo dibujan. El encabezado se arma con buildHeader (compartido con la carta).
  */
 
-import { Experience, type Profile, type TailoredBullet, type TailoredCv } from '@jobfinder/core';
+import { Experience, type Profile, type TailoredCv } from '@jobfinder/core';
 import type { ResumeGroup, ResumeModel } from './ResumeModel';
 import { buildHeader } from './buildHeader';
 import { formatPeriod } from './formatPeriod';
@@ -35,74 +35,63 @@ export function buildResumeModel(
   experiences: Experience[],
   lang: 'es' | 'en'
 ): ResumeModel {
-  // Orden de CV: el empleo actual primero, luego por fecha descendente.
-  const sortedExperiences = [...experiences].sort(Experience.byMostRecent);
-
-  // Un balde de textos por experiencia (arranca vacío; se llena abajo).
-  const bulletsByExperience = new Map<string, string[]>(sortedExperiences.map((e) => [e.id, []]));
-  const projects: TailoredBullet[] = [];
-  const education: TailoredBullet[] = [];
-
+  // Un balde de textos por contenedor (arranca vacío; se llena abajo). Todo
+  // bullet tiene experienceId, así que ya no hace falta un camino aparte para
+  // "sin empleo" — la única pregunta es a qué contenedor pertenece.
+  const bulletsByContainer = new Map<string, string[]>(experiences.map((e) => [e.id, []]));
   for (const bullet of cv.bullets) {
-    const bucket = bullet.experienceId && bulletsByExperience.get(bullet.experienceId);
-    if (bucket) {
-      bucket.push(bullet.text);
-    } else if (bullet.category === 'education') {
-      education.push(bullet);
-    } else {
-      // 'project', y cualquier logro sin empleo vinculado que no sea educación.
-      projects.push(bullet);
-    }
+    bulletsByContainer.get(bullet.experienceId)?.push(bullet.text);
   }
-
-  // TODOS los empleos entran, tengan o no bullets seleccionados. Omitir uno
-  // porque el LLM no eligió ningún logro suyo para ESTA vacante abriría un
-  // hueco en el historial laboral —lo primero que mira un reclutador— y eso es
-  // peor que un encabezado escueto. Dónde trabajaste es un hecho; lo que se
-  // adapta a la oferta son los logros que se cuentan debajo.
-  const experience: ResumeGroup[] = sortedExperiences.map((exp) => ({
-    heading: `${exp.role} — ${exp.company}`,
-    meta: formatPeriod(exp.startDate, exp.endDate, lang),
-    bullets: bulletsByExperience.get(exp.id) ?? [],
-  }));
 
   return {
     header: buildHeader(profile),
     labels: LABELS[lang],
     summary: lang === 'es' ? profile.summaryEs : profile.summaryEn,
     skills: cv.keywords,
-    experience,
-    projects: groupByContext(projects),
-    education: groupByContext(education),
+    experience: section('job', experiences, bulletsByContainer, lang),
+    projects: section('project', experiences, bulletsByContainer, lang),
+    education: section('education', experiences, bulletsByContainer, lang),
   };
 }
 
 /**
- * Agrupa bullets SIN empleo por su contexto (`sourceRole`), que es lo único que
- * los titula: una tesis, un proyecto personal, una universidad. Es el mismo
- * gesto que agrupar la experiencia por empresa, con el campo que sí tienen.
+ * Una sección del CV: todos los contenedores de un `kind`, más reciente
+ * primero, cada uno con sus bullets seleccionados debajo.
  *
- * Un Map preserva el orden de aparición, así que respeta la prioridad con la
- * que el LLM los seleccionó. Los que no traen contexto van al final, sueltos:
- * es la única forma honesta de mostrarlos sin inventarles un título.
+ * TODOS entran, tengan o no bullets seleccionados para ESTA oferta. Omitir uno
+ * abriría un hueco en el historial —lo primero que mira un reclutador— y eso es
+ * peor que un encabezado escueto (ADR-0026). La cobertura garantizada
+ * (TailorDocuments, ADR-0028) ya intenta que esto rara vez pase; esta sección
+ * solo dibuja lo que llegó, no decide si algo falta.
  */
-function groupByContext(bullets: TailoredBullet[]): ResumeGroup[] {
-  const byContext = new Map<string, ResumeGroup>();
-  const untitled: string[] = [];
+function section(
+  kind: Experience['kind'],
+  experiences: Experience[],
+  bulletsByContainer: Map<string, string[]>,
+  lang: 'es' | 'en'
+): ResumeGroup[] {
+  return experiences
+    .filter((exp) => exp.kind === kind)
+    .sort(Experience.byMostRecent)
+    .map((exp) => ({
+      heading: heading(exp),
+      meta: meta(exp, lang),
+      bullets: bulletsByContainer.get(exp.id) ?? [],
+    }));
+}
 
-  for (const bullet of bullets) {
-    if (!bullet.sourceRole) {
-      untitled.push(bullet.text);
-      continue;
-    }
-    const group = byContext.get(bullet.sourceRole);
-    if (group) {
-      group.bullets.push(bullet.text);
-    } else {
-      byContext.set(bullet.sourceRole, { heading: bullet.sourceRole, bullets: [bullet.text] });
-    }
-  }
+/**
+ * "Rol — Empresa" para un empleo, "Título — Institución" para un grado. Si
+ * organization y title coinciden (contenedor recién creado desde un dato
+ * migrado, aún sin editar — ver migración 0003), se muestra una sola vez en
+ * vez de duplicarlo.
+ */
+function heading(exp: Experience): string {
+  return exp.organization === exp.title ? exp.title : `${exp.title} — ${exp.organization}`;
+}
 
-  const groups = [...byContext.values()];
-  return untitled.length > 0 ? [...groups, { bullets: untitled }] : groups;
+/** Período, y si es un proyecto con URL, la URL a continuación. */
+function meta(exp: Experience, lang: 'es' | 'en'): string {
+  const period = formatPeriod(exp.startDate, exp.endDate, lang);
+  return exp.url ? `${period} · ${exp.url}` : period;
 }

@@ -119,16 +119,12 @@ function drawSection(doc: PDFKit.PDFDocument, title: string, groups: ResumeGroup
   }
 }
 
-/** Un bloque: encabezado en negrita, línea gris opcional, y sus bullets. */
+/** Un bloque: encabezado en negrita, línea gris del período, y sus bullets. */
 function drawGroup(doc: PDFKit.PDFDocument, group: ResumeGroup): void {
   doc.moveDown(0.5);
-  if (group.heading) {
-    doc.font(FONT_BOLD).fontSize(SIZE_BODY).text(group.heading);
-  }
-  if (group.meta) {
-    doc.font(FONT).fontSize(SIZE_CONTACT).fillColor('#555555').text(group.meta);
-    doc.fillColor('black'); // pdfkit no resetea el color solo: hay que devolverlo.
-  }
+  doc.font(FONT_BOLD).fontSize(SIZE_BODY).text(group.heading);
+  doc.font(FONT).fontSize(SIZE_CONTACT).fillColor('#555555').text(group.meta);
+  doc.fillColor('black'); // pdfkit no resetea el color solo: hay que devolverlo.
   doc.moveDown(0.2);
   bulletList(doc, group.bullets);
 }

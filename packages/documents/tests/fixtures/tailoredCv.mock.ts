@@ -1,16 +1,17 @@
 /**
- * FIXTURE: un TailoredCv de prueba (lo que produciría el ClaudeAdapter del
- * Sprint 2, ya con category/experienceId resueltos por el guardrail —
- * Sprint 6, Paso 1d). Es la ENTRADA del generador de documentos.
+ * FIXTURE: un TailoredCv de prueba (lo que produciría el ClaudeAdapter, ya con
+ * category/experienceId resueltos por el guardrail — ADR-0023 — y compuesto
+ * por TailorDocuments — ADR-0026/0028). Es la ENTRADA del generador de
+ * documentos.
  *
- * Cubre todas las ramas de agrupación a propósito: 2 bullets en el empleo
- * actual, 1 en el empleo pasado, 2 proyectos que comparten contexto (deben
- * caer en el MISMO bloque), 1 proyecto sin contexto (bloque sin título) y 1 de
- * educación. Ninguno de los tres últimos tiene experienceId.
+ * Cubre las 3 secciones a propósito: 2 bullets en el empleo actual, 1 en el
+ * pasado, 2 en el proyecto (para probar que varios bullets bajo un mismo
+ * contenedor se agrupan igual que en un empleo) y 1 en educación. TODOS tienen
+ * experienceId: ya no existe el bullet "suelto" (ver ADR-0028).
  */
 
 import type { TailoredCv } from '@jobfinder/core';
-import { mockExperienceCurrent, mockExperiencePast } from './experiences.mock';
+import { mockExperienceCurrent, mockExperiencePast, mockProject, mockEducation } from './experiences.mock';
 
 export const mockTailoredCv: TailoredCv = {
   content: '# CV\n\nSoftware Engineer',
@@ -35,25 +36,20 @@ export const mockTailoredCv: TailoredCv = {
     },
     {
       text: 'Built an open-source CLI tool for scaffolding NestJS projects.',
-      category: 'project',
-      sourceRole: 'Side project — Open source',
+      category: 'achievement',
+      experienceId: mockProject.id,
       skills: ['NestJS', 'TypeScript'],
     },
     {
       text: 'Published it to npm, reaching 2k weekly downloads.',
-      category: 'project',
-      sourceRole: 'Side project — Open source',
+      category: 'achievement',
+      experienceId: mockProject.id,
       skills: ['npm'],
     },
     {
-      text: 'Wrote a technical blog series on database indexing.',
-      category: 'project',
-      skills: ['PostgreSQL'],
-    },
-    {
       text: 'Completed a certification in distributed systems design.',
-      category: 'education',
-      sourceRole: 'Coursera',
+      category: 'achievement',
+      experienceId: mockEducation.id,
       skills: [],
     },
   ],

@@ -40,27 +40,30 @@ describe('buildResumeModel', () => {
     expect(model.experience[1].meta).toBe('Jun 2021 – Dec 2023');
   });
 
-  it('agrupa Proyectos por su contexto y junta los que lo comparten', () => {
+  it('agrupa Proyectos bajo su contenedor real (varios bullets, un solo bloque)', () => {
     const model = buildResumeModel(mockTailoredCv, mockProfile, mockExperiences, 'en');
 
-    expect(model.projects[0]).toEqual({
-      heading: 'Side project — Open source',
-      bullets: [
-        'Built an open-source CLI tool for scaffolding NestJS projects.',
-        'Published it to npm, reaching 2k weekly downloads.',
-      ],
-    });
-    expect(model.education).toEqual([
-      { heading: 'Coursera', bullets: ['Completed a certification in distributed systems design.'] },
+    expect(model.projects).toHaveLength(1);
+    expect(model.projects[0].heading).toBe('Open source CLI — Side project');
+    expect(model.projects[0].bullets).toEqual([
+      'Built an open-source CLI tool for scaffolding NestJS projects.',
+      'Published it to npm, reaching 2k weekly downloads.',
     ]);
   });
 
-  it('deja sin título los bullets que no traen contexto, y los pone al final', () => {
+  it('muestra la URL de un proyecto junto al período', () => {
+    const model = buildResumeModel(mockTailoredCv, mockProfile, mockExperiences, 'en');
+    expect(model.projects[0].meta).toContain('https://github.com/danieldev/cli');
+  });
+
+  it('agrupa Educación bajo su contenedor real', () => {
     const model = buildResumeModel(mockTailoredCv, mockProfile, mockExperiences, 'en');
 
-    const last = model.projects[model.projects.length - 1];
-    expect(last.heading).toBeUndefined();
-    expect(last.bullets).toEqual(['Wrote a technical blog series on database indexing.']);
+    expect(model.education).toHaveLength(1);
+    expect(model.education[0].heading).toBe('Distributed systems design certification — Coursera');
+    expect(model.education[0].bullets).toEqual([
+      'Completed a certification in distributed systems design.',
+    ]);
   });
 
   it('MANTIENE un empleo sin bullets seleccionados (no abrir huecos en el historial)', () => {

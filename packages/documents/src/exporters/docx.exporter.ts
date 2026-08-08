@@ -42,28 +42,19 @@ function sectionParagraphs(title: string, groups: ResumeGroup[]): Paragraph[] {
   return [sectionHeading(title), ...groups.flatMap(groupParagraphs)];
 }
 
-/** Un bloque: encabezado en negrita, línea secundaria opcional, y sus bullets. */
+/** Un bloque: encabezado en negrita, línea secundaria del período, y sus bullets. */
 function groupParagraphs(group: ResumeGroup): Paragraph[] {
-  const paragraphs: Paragraph[] = [];
-
-  if (group.heading) {
-    paragraphs.push(
-      new Paragraph({
-        spacing: { before: 160, after: group.meta ? 0 : 60 },
-        children: [run(group.heading, { bold: true })],
-      })
-    );
-  }
-  if (group.meta) {
-    paragraphs.push(
-      new Paragraph({
-        spacing: { after: 60 },
-        children: [run(group.meta, { size: SIZE_CONTACT })],
-      })
-    );
-  }
-
-  return [...paragraphs, ...group.bullets.map(bulletParagraph)];
+  return [
+    new Paragraph({
+      spacing: { before: 160, after: 0 },
+      children: [run(group.heading, { bold: true })],
+    }),
+    new Paragraph({
+      spacing: { after: 60 },
+      children: [run(group.meta, { size: SIZE_CONTACT })],
+    }),
+    ...group.bullets.map(bulletParagraph),
+  ];
 }
 
 export function exportCoverLetterToDocx(model: CoverLetterModel): Promise<Uint8Array> {

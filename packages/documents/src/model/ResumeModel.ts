@@ -45,12 +45,11 @@ export interface ResumeLabels {
  * exporters solo dibujan texto, nunca deciden idioma ni formato de fecha.
  */
 export interface ResumeGroup {
-  /** Negrita: "Fullstack Developer — Fluyez", "Proyecto de tesis". Ausente en
-   *  los bullets sueltos que no traen contexto ninguno. */
-  heading?: string;
-  /** Línea secundaria en gris. Hoy solo el período de un empleo. */
-  meta?: string;
-  /** Puede venir vacío: un empleo entra al CV aunque el LLM no eligiera
+  /** Negrita: "Fullstack Developer — Fluyez", "JobFinder — Proyecto personal". */
+  heading: string;
+  /** Línea secundaria en gris: el período (y la URL, si es un proyecto que la tiene). */
+  meta: string;
+  /** Puede venir vacío: un contenedor entra al CV aunque el LLM no eligiera
    *  ningún logro suyo para esta vacante (ver buildResumeModel). */
   bullets: string[];
 }
@@ -59,10 +58,9 @@ export interface ResumeGroup {
  * Representación neutral al formato de un CV.
  * - summary: párrafo de texto libre (resumen profesional del Profile)
  * - skills: lista (viene de TailoredCv.keywords)
- * - experience: un bloque por empleo del perfil, con los bullets que el LLM
- *   seleccionó para él debajo
- * - projects / education: bullets SIN empleo vinculado, separados por
- *   categoría y agrupados por su contexto (sourceRole)
+ * - experience / projects / education: un bloque por CONTENEDOR de ese `kind`
+ *   (ver Experience en core), con los bullets que el LLM seleccionó para él
+ *   debajo — vacío si no seleccionó ninguno.
  */
 export interface ResumeModel {
   header: ResumeHeader;
