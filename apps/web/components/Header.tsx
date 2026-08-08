@@ -3,7 +3,7 @@ import { ThemeToggle } from './ThemeToggle';
 
 const links = [
   { href: '/tailor', label: 'Tailor' },
-  { href: '/experiences', label: 'Empleos' },
+  { href: '/experiences', label: 'Historial' },
   { href: '/bullets', label: 'Bullets' },
   { href: '/profile', label: 'Perfil' },
 ];

@@ -17,10 +17,11 @@ import type {
   JobModality,
   JobSeniority,
   Bullet,
+  ExperienceKind,
 } from '@jobfinder/core';
 
 // Re-export para que las páginas importen todo de un solo lugar (lib/).
-export type { Preferences, TailoredCv, DocFormat, JobModality, JobSeniority };
+export type { Preferences, TailoredCv, DocFormat, JobModality, JobSeniority, ExperienceKind };
 
 /** Categoría del bullet, derivada de la entidad (indexed access type):
  *  si core cambia la unión, este tipo se actualiza solo. */
@@ -41,14 +42,18 @@ export interface ProfileDto {
   updatedAt: string;
 }
 
+/** `organization`/`title` se reinterpretan según `kind`: empresa/rol para un
+ *  empleo, contexto/nombre para un proyecto, institución/título para un grado. */
 export interface ExperienceDto {
   id: string;
   profileId: string;
-  company: string;
-  role: string;
+  kind: ExperienceKind;
+  organization: string;
+  title: string;
   location?: string;
+  url?: string;
   startDate: string; // ISO
-  endDate?: string; // ausente = sigue trabajando ahí
+  endDate?: string; // ausente = sigue en curso
   createdAt: string;
   updatedAt: string;
 }
@@ -56,12 +61,12 @@ export interface ExperienceDto {
 export interface BulletDto {
   id: string;
   profileId: string;
-  experienceId?: string;
+  /** El contenedor al que pertenece — nunca ausente: todo bullet vive bajo uno. */
+  experienceId: string;
   textEs: string;
   textEn: string;
   skills: string[];
   category: BulletCategory;
-  sourceRole?: string;
   metrics?: Record<string, string | number>;
   createdAt: string;
   updatedAt: string;
@@ -94,22 +99,26 @@ export interface CreateProfileInput {
 
 /** Las fechas se envían como "YYYY-MM": es lo único que un CV necesita. */
 export interface CreateExperienceInput {
-  company: string;
-  role: string;
+  kind: ExperienceKind;
+  organization: string;
+  title: string;
   location?: string;
+  url?: string;
   startDate: string; // "2025-04"
-  endDate?: string | null; // null = sigue trabajando ahí
+  endDate?: string | null; // null = sigue en curso
 }
 
-export type UpdateExperienceInput = Partial<CreateExperienceInput>;
+/** `kind` es inmutable tras crear el contenedor (ver ADR-0028): cambiar de
+ *  tipo no es una edición, es borrar y crear otro. */
+export type UpdateExperienceInput = Partial<Omit<CreateExperienceInput, 'kind'>>;
 
 export interface CreateBulletInput {
-  experienceId?: string | null;
+  /** Obligatorio: todo bullet pertenece a un contenedor. */
+  experienceId: string;
   textEs: string;
   textEn: string;
   skills: string[];
   category: BulletCategory;
-  sourceRole?: string;
   metrics?: Record<string, string | number>;
 }
 

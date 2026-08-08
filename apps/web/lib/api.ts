@@ -121,7 +121,7 @@ export const api = {
       { method: 'DELETE' }
     ),
 
-  // ---- Experiences (empleos: dan contexto a los bullets) ----
+  // ---- Experiences (empleos, proyectos y educación: dan contexto a los bullets) ----
   listExperiences: (profileId: string) =>
     request<ExperienceDto[]>(`/profiles/${encodeURIComponent(profileId)}/experiences`),
 

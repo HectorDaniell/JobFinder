@@ -1,23 +1,31 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import type {
   BulletDto,
   CreateBulletInput,
   BulletCategory,
   ExperienceDto,
+  ExperienceKind,
 } from '../lib/types';
 import { formatPeriod } from '../lib/dates';
-import { Textarea, Input, Select } from './ui/fields';
+import { Textarea, Select } from './ui/fields';
 import { TagInput } from './ui/TagInput';
 
 export const CATEGORY_OPTIONS = [
   { value: 'experience', label: 'Experiencia' },
   { value: 'achievement', label: 'Logro' },
-  { value: 'project', label: 'Proyecto' },
-  { value: 'education', label: 'Educación' },
 ] as const satisfies readonly { value: BulletCategory; label: string }[];
+
+/** Orden en que aparecen en el desplegable — el mismo de las secciones del CV. */
+const KIND_ORDER: ExperienceKind[] = ['job', 'project', 'education'];
+const KIND_LABEL: Record<ExperienceKind, string> = {
+  job: 'Empleo',
+  project: 'Proyecto',
+  education: 'Educación',
+};
 
 /**
  * Formulario de bullet, compartido por CREAR y EDITAR (si llega `initial`, es
@@ -27,6 +35,11 @@ export const CATEGORY_OPTIONS = [
  * PÁGINA porque el wizard lo comparte entre 3 pasos; aquí el borrador es LOCAL
  * al formulario — nadie más lo necesita hasta el submit. Regla: el estado, lo
  * más local posible.
+ *
+ * `experienceId` es OBLIGATORIO: todo bullet pertenece a un contenedor (empleo,
+ * proyecto o educación) — ya no existe la opción "sin empleo" que había antes
+ * (era un `sourceRole` de texto libre haciendo ese trabajo; ahora lo hace el
+ * contenedor real, ver ADR-0028).
  *
  * `metrics` (Record clave→valor) se omite de la UI en Fase 1: la API lo acepta
  * pero un editor clave/valor no aporta aún frente a lo que complica.
@@ -44,30 +57,29 @@ export function BulletForm({
   onSubmit: (input: CreateBulletInput) => void;
   onCancel: () => void;
 }) {
-  const [form, setForm] = useState<CreateBulletInput>({
-    experienceId: initial?.experienceId ?? null,
+  const [form, setForm] = useState<Omit<CreateBulletInput, 'experienceId'> & { experienceId: string }>({
+    experienceId: initial?.experienceId ?? '',
     textEs: initial?.textEs ?? '',
     textEn: initial?.textEn ?? '',
     skills: initial?.skills ?? [],
     category: initial?.category ?? 'experience',
-    sourceRole: initial?.sourceRole ?? '',
   });
 
-  // '' representa "sin empleo": un <select> solo maneja strings, y ese caso es
-  // legítimo (proyectos personales, educación).
-  const experienceOptions = [
-    { value: '', label: 'Sin empleo — proyecto o educación' },
-    ...experiences.map((e) => ({
+  const experienceOptions = [...experiences]
+    .sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind))
+    .map((e) => ({
       value: e.id,
-      label: `${e.role} — ${e.company} · ${formatPeriod(e.startDate, e.endDate)}`,
-    })),
-  ];
+      label: `[${KIND_LABEL[e.kind]}] ${e.title}${
+        e.organization !== e.title ? ` — ${e.organization}` : ''
+      } · ${formatPeriod(e.startDate, e.endDate)}`,
+    }));
 
-  function set<K extends keyof CreateBulletInput>(key: K, value: CreateBulletInput[K]) {
+  function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  const canSubmit = form.textEs.trim() !== '' && form.textEn.trim() !== '';
+  const canSubmit =
+    form.textEs.trim() !== '' && form.textEn.trim() !== '' && form.experienceId !== '';
 
   return (
     <div className="space-y-5">
@@ -96,31 +108,29 @@ export function BulletForm({
           onChange={(v) => set('category', v)}
           options={CATEGORY_OPTIONS}
         />
-        <Select
-          label="¿Dónde ocurrió?"
-          value={form.experienceId ?? ''}
-          onChange={(v) => set('experienceId', v || null)}
-          options={experienceOptions}
-          hint={
-            experiences.length === 0
-              ? 'Añade tus empleos para agrupar el CV por empresa.'
-              : 'Agrupa este logro bajo la empresa y fechas correctas.'
-          }
-        />
-      </div>
 
-      {/* Sin empleo asignado, `sourceRole` es lo único que da contexto
-          (una tesis, un proyecto personal). Con empleo, sobra: la empresa y las
-          fechas ya salen de la experiencia. */}
-      {!form.experienceId && (
-        <Input
-          label="Contexto (opcional)"
-          value={form.sourceRole ?? ''}
-          onChange={(v) => set('sourceRole', v)}
-          placeholder="Proyecto de tesis — Ingeniería de Sistemas"
-          hint="Solo para logros que no pertenecen a un empleo."
-        />
-      )}
+        {experiences.length === 0 ? (
+          <div className="flex flex-col justify-end">
+            <span className="label">¿Dónde ocurrió?</span>
+            <p className="rounded-xl bg-amber-500/10 px-3 py-2 text-xs text-amber-700 ring-1 ring-amber-500/20 dark:text-amber-400">
+              Necesitas al menos un{' '}
+              <Link href="/experiences" className="underline">
+                empleo, proyecto o estudio
+              </Link>{' '}
+              antes de añadir un bullet.
+            </p>
+          </div>
+        ) : (
+          <Select
+            label="¿Dónde ocurrió?"
+            required
+            value={form.experienceId}
+            onChange={(v) => set('experienceId', v)}
+            options={[{ value: '', label: 'Selecciona uno…' }, ...experienceOptions]}
+            hint="Agrupa este logro bajo el contenedor y las fechas correctas."
+          />
+        )}
+      </div>
 
       <TagInput
         label="Skills"
@@ -137,9 +147,7 @@ export function BulletForm({
         <button
           type="button"
           className="btn-primary inline-flex items-center gap-2 disabled:opacity-40"
-          onClick={() =>
-            onSubmit({ ...form, sourceRole: form.sourceRole?.trim() || undefined })
-          }
+          onClick={() => onSubmit(form as CreateBulletInput)}
           disabled={!canSubmit || saving}
         >
           {saving && <Loader2 size={16} className="animate-spin" />}

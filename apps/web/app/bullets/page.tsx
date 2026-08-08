@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Briefcase, Loader2, Pencil, Plus } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import type { BulletDto, CreateBulletInput, ExperienceDto } from '../../lib/types';
@@ -193,21 +192,21 @@ export default function BulletsPage() {
                       {CATEGORY_LABEL[b.category]}
                     </span>
                     {(() => {
+                      // Siempre debería encontrarse: todo bullet tiene un contenedor
+                      // real (ADR-0028). El `if` es solo por si esta lista carga
+                      // antes que `experiences` en el mismo efecto.
                       const exp = experiences.find((e) => e.id === b.experienceId);
-                      if (exp) {
-                        return (
-                          <span className="inline-flex items-center gap-1 text-xs text-accent">
-                            <Briefcase size={11} /> {exp.company} ·{' '}
-                            <span className="font-mono">
-                              {formatPeriod(exp.startDate, exp.endDate)}
-                            </span>
+                      if (!exp) return null;
+                      return (
+                        <span className="inline-flex items-center gap-1 text-xs text-accent">
+                          <Briefcase size={11} />
+                          {exp.title}
+                          {exp.organization !== exp.title && ` — ${exp.organization}`} ·{' '}
+                          <span className="font-mono">
+                            {formatPeriod(exp.startDate, exp.endDate)}
                           </span>
-                        );
-                      }
-                      if (b.sourceRole) {
-                        return <span className="text-xs text-muted">· {b.sourceRole}</span>;
-                      }
-                      return null;
+                        </span>
+                      );
                     })()}
                   </div>
                   <p className="mt-2 text-sm leading-relaxed">{b.textEs}</p>
@@ -241,19 +240,6 @@ export default function BulletsPage() {
           </li>
         ))}
       </ul>
-
-      {/* Sin empleos cargados, los bullets no pueden agruparse por empresa. */}
-      {experiences.length === 0 && bullets.length > 0 && (
-        <div className="card mt-8 p-5">
-          <p className="text-sm">
-            Aún no has añadido <strong>empleos</strong>. Sin ellos, tu CV lista los logros
-            sin decir en qué empresa ni cuándo ocurrieron.
-          </p>
-          <Link href="/experiences" className="btn-primary mt-4 inline-block">
-            Añadir tus empleos
-          </Link>
-        </div>
-      )}
     </main>
   );
 }
