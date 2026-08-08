@@ -8,14 +8,16 @@ CV y carta a fondo solo para las mejores** y **mide resultados** para mejorar el
 
 ## Estado
 
-🟢 **Fase 1 completa y en uso real** — creas tu perfil, tus empleos y tu banco de
-bullets, pegas una oferta y descargas el CV y la carta adaptados en PDF y DOCX,
-sin datos inventados. El CV sale agrupado por empresa, con periodos, proyectos y
-formación.
+🟢 **Fase 1 completa y en uso real** — creas tu perfil, tu historial (empleos,
+proyectos, educación) y tu banco de bullets, pegas una oferta y descargas el CV
+y la carta adaptados en PDF y DOCX, sin datos inventados. El CV sale agrupado
+por contenedor, con periodos, y ninguno queda sin al menos un logro.
 
 El Sprint 6 endureció el producto contra lo que apareció al usarlo de verdad
 contra Claude: falsos positivos del anti-invención, empleos que desaparecían del
-CV, y el JSON de la base que no se podía consultar desde SQL.
+CV, el JSON de la base que no se podía consultar desde SQL, y — al generalizar
+esa última corrección — `Experience` pasó de "solo empleos" a un contenedor
+genérico con cobertura garantizada (ADR-0028).
 
 Siguiente: **Fase 2** (ingesta desde Gmail y APIs de bolsas + embudo de matching).
 
@@ -29,7 +31,7 @@ Siguiente: **Fase 2** (ingesta desde Gmail y APIs de bolsas + embudo de matching
 ```
 apps/
   api/    REST API (NestJS + Fastify) — expone el dominio por HTTP
-  web/    UI (Next.js) — perfil, empleos, bullets y la pantalla de tailoring
+  web/    UI (Next.js) — perfil, historial, bullets y la pantalla de tailoring
   worker/ colas y tareas programadas (Fase 2)
 packages/
   core/       dominio: entidades, puertos, casos de uso, errores  (no depende de nadie)

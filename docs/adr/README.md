@@ -48,6 +48,7 @@ pueden "backfillear" como archivos más adelante si hiciera falta.)
 | [0025](0025-degradar-con-gracia-ante-un-bullet-inventado.md) | Degradar con gracia cuando el LLM inventa un bullet | Aceptado |
 | [0026](0026-la-estructura-del-cv-no-se-filtra-por-relevancia.md) | La estructura del CV no se filtra por relevancia | Aceptado |
 | [0027](0027-habilidades-desde-los-tags-curados.md) | Las habilidades salen de los tags curados, no del LLM | Aceptado |
+| [0028](0028-experience-como-contenedor-y-cobertura-garantizada.md) | `Experience` como contenedor genérico, y cobertura garantizada por contenedor | Aceptado |
 
 ## Cómo agregar uno
 

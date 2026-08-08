@@ -201,8 +201,11 @@ Esquema relacional en Postgres (Drizzle). Vectores en columnas `vector` (pgvecto
 ```
 profile           (1)  id, full_name, email, phone, links(jsonb),
                        summary_es, summary_en, preferences(jsonb), updated_at
-bullet            (N)  id, profile_id→profile, text_es, text_en, skills(text[]),
-                       category, metrics(jsonb), source_role, embedding vector
+experience        (N)  id, profile_id→profile, kind(job|project|education),
+                       organization, title, location, url, start_date, end_date
+bullet            (N)  id, profile_id→profile, experience_id→experience (NOT NULL,
+                       cascade), text_es, text_en, skills(text[]),
+                       category(experience|achievement), metrics(jsonb), embedding vector
 source            (N)  id, name, kind(email|api|rss), config(jsonb), enabled
 email_message     (N)  id, gmail_id, from_addr, subject, received_at, parsed(jsonb)
 job               (N)  id, source_id→source, external_id, title, company, location,
@@ -220,6 +223,11 @@ application       (N)  id, job_id→job, channel(email|greenhouse|lever|assisted
 application_event (N)  id, application_id→application, type, payload(jsonb), occurred_at
 llm_usage         (N)  id, op, model, input_tokens, output_tokens, cost_estimate, created_at
 ```
+
+**`experience` como contenedor**: `organization`/`title` se reinterpretan según `kind`
+(empresa/rol, contexto/proyecto, institución/título) en vez de columnas específicas por
+tipo — job/project/education comparten toda propiedad relevante. Todo `bullet` pertenece
+a un `experience`; no existe el bullet suelto (ADR-0028).
 
 **Estados de `application`**: `prepared → submitted → acknowledged → (rejected | interview →
 offer | ghosted)`. Cada transición es un `application_event` (línea de tiempo + analítica).

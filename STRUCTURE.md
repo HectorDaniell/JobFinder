@@ -1,6 +1,6 @@
 # Project Structure
 
-> Estructura **real** del repositorio (actualizada al cierre del Sprint 6).
+> Estructura **real** del repositorio (actualizada 2026-08-08, Sprint 6 + contenedores).
 > Lo marcado con ⬜ existe como carpeta/esqueleto pero se implementa en fases futuras.
 
 ```
@@ -12,7 +12,7 @@ jobfinder/
 │   ├── PROGRESS.md         # Log de lo realmente construido  ← estado actual
 │   ├── FLUJO.md            # Diagramas: el recorrido completo end-to-end
 │   ├── SETUP.md            # Instalación y puesta en marcha
-│   └── adr/                # Architecture Decision Records (0009–0027)
+│   └── adr/                # Architecture Decision Records (0009–0028)
 │
 ├── apps/
 │   ├── api/                        # REST API (NestJS + Fastify) — adaptador de ENTRADA
@@ -67,10 +67,11 @@ jobfinder/
 │   │   └── tests/
 │   │
 │   ├── db/                         # Drizzle + Postgres (adaptador de SALIDA)
-│   │   ├── src/schema.ts           # 11 tablas
+│   │   ├── src/schema.ts           # 10 tablas
 │   │   ├── src/columns.ts          # `jsonb` propio, sin doble codificación (ADR-0024)
 │   │   ├── src/repositories/       # Profile · Bullet · Experience · Job · JobScore
-│   │   ├── migrations/             # 0000 inicial · 0001 experience · 0002 fix jsonb
+│   │   ├── migrations/             # 0000 inicial · 0001 experience · 0002 fix jsonb ·
+│   │   │                           # 0003 experience como contenedor (ADR-0028)
 │   │   └── scripts/                # migrate.js · seed.ts
 │   │
 │   ├── llm/                        # Claude (adaptador de SALIDA)

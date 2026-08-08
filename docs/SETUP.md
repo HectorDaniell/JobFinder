@@ -1,6 +1,6 @@
 # JobFinder — Guía de instalación y setup
 
-> Última actualización: 2026-08-06 · Arquitectura: Node + TypeScript + Docker + Postgres
+> Última actualización: 2026-08-08 · Arquitectura: Node + TypeScript + Docker + Postgres
 
 ---
 
@@ -215,6 +215,7 @@ añadió una migración, tu BD se queda atrás sin avisar. Migraciones actuales:
 | `0000_fat_toad_men` | Tablas iniciales |
 | `0001_add_experience` | Tabla `experience` + `bullet.experience_id` |
 | `0002_fix_jsonb_double_encoding` | Repara el JSON guardado como cadena (ADR-0024) |
+| `0003_experience_as_container` | `experience.kind` + `bullet.experience_id` obligatorio (ADR-0028) |
 
 ### 4.3 Levantar las apps (dos opciones)
 
@@ -462,8 +463,9 @@ docker compose -f docker-compose.prod.yml up
 3. ✅ Leer [ARQUITECTURA.md](./ARQUITECTURA.md) para entender el diseño.
 4. 🚀 **Usar la app** (la Fase 1 ya está construida):
    - http://localhost:3000 → crea tu perfil (3 pasos).
-   - Añade tus **empleos** en *Empleos*: dan empresa y fechas al CV.
-   - Carga tu banco de bullets y asigna cada uno a su empleo.
+   - Añade tu **historial** en *Historial*: empleos, proyectos y educación —
+     dan organización y fechas al CV.
+   - Carga tu banco de bullets y asigna cada uno a su contenedor.
    - Pega una oferta en la pantalla *Tailor* → descarga el CV y la carta en PDF/DOCX.
    - Sin `ANTHROPIC_API_KEY`, pon `USE_FAKE_LLM="true"` para recorrer el flujo
      igualmente (los documentos generados son reales).

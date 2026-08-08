@@ -1,7 +1,7 @@
 # JobFinder — Roadmap de implementación (Fase 1: Tailoring)
 
 > Estado: **Fase 1 COMPLETADA** (sprints 0–5) · Inicio: 2026-06-22 · Cierre: 2026-07-31
-> Endurecida con uso real en el **Sprint 6** (2026-08-06), fuera del plan original.
+> Endurecida con uso real en el **Sprint 6** (2026-08-06 a 2026-08-08), fuera del plan original.
 >
 > Este documento es el **plan** original. Para lo que realmente se construyó y las
 > desviaciones respecto al plan, ver [PROGRESS.md](./PROGRESS.md).
@@ -418,7 +418,9 @@ Si tuvieras ayuda, podrías **paralelizar 2 y 3** (LLM + DocGen en paralelo), ah
 - **`DocumentRepository`** (persistir los archivos generados) se difirió a la Fase 3.
 - **Entidad `Experience`**: no estaba en el plan. El plan asumía que un banco de
   bullets bastaba para un CV, pero sin empresa ni fechas el documento salía como
-  una lista plana de logros. Se añadió en el Sprint 6.
+  una lista plana de logros. Se añadió en el Sprint 6, y se generalizó a
+  contenedor genérico (empleo/proyecto/educación) más adelante en el mismo
+  sprint — ver ADR-0028.
 
 ### Añadido fuera del plan (Sprint 6)
 
@@ -431,6 +433,9 @@ Claude con datos propios. Detalle en [PROGRESS.md](./PROGRESS.md) § Sesión 8:
 - Las habilidades salen de los tags curados, no del LLM (ADR-0027).
 - Skeleton de carga y botones de descarga legibles.
 - Deuda del `jsonb` doblemente codificado, saldada (ADR-0024).
+- `Experience` generalizada a contenedor genérico (`kind`) + cobertura
+  garantizada por contenedor, resolviendo el refinamiento de producto que el
+  propio Sprint 6 había dejado pendiente (ADR-0028).
 
 ---
 

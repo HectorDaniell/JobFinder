@@ -135,12 +135,11 @@ No todo el documento lo decide el LLM. Separar qué es **adaptable** y qué es u
 flowchart LR
     subgraph FIJO["Hechos — del perfil, siempre salen"]
         H1["Encabezado y resumen"]
-        H2["Empleos: rol · empresa · periodo"]
-        H3["Formación"]
+        H2["Historial completo: cada empleo,<br/>proyecto y título, con periodo"]
         H4["Habilidades<br/><i>tus tags curados</i>"]
     end
     subgraph ADAPTA["Adaptable — lo elige el LLM"]
-        A1["QUÉ logros se cuentan<br/>bajo cada empleo"]
+        A1["QUÉ logros se cuentan<br/>bajo cada contenedor"]
         A2["Cómo se reformulan<br/><i>sin inventar</i>"]
         A3["El orden de las habilidades<br/><i>por relevancia al JD</i>"]
     end
@@ -150,10 +149,12 @@ flowchart LR
     style CV fill:#065f46,stroke:#34d399,color:#fff
 ```
 
-Un empleo entra al CV aunque el LLM no eligiera ningún logro suyo para esa
-vacante: omitirlo abriría un hueco de fechas sin explicar (ADR-0026). Y las
-habilidades salen de tus etiquetas, no de keywords que el modelo extrae de la
-oferta (ADR-0027).
+Ningún contenedor (empleo, proyecto o título) queda mudo aunque el LLM no
+eligiera ningún logro suyo para esa vacante: `TailorDocuments` rellena el hueco
+con el mejor bullet real del banco por solapamiento de skills, nunca inventado
+(cobertura garantizada, ADR-0028, que generaliza la regla que ADR-0026 aplicaba
+solo a la formación). Y las habilidades salen de tus etiquetas, no de keywords
+que el modelo extrae de la oferta (ADR-0027).
 
 ---
 
@@ -218,13 +219,13 @@ flowchart TD
     Q -->|no| SETUP["/setup<br/>wizard 3 pasos"]
     Q -->|sí| TAILOR["/tailor<br/>★ home del día a día"]
 
-    SETUP -->|"POST /profiles<br/>+ guarda el id"| EXP["/experiences<br/>empleos: empresa y fechas"]
+    SETUP -->|"POST /profiles<br/>+ guarda el id"| EXP["/experiences<br/>historial: empleos, proyectos, educación"]
     EXP --> BULLETS["/bullets<br/>banco de logros"]
     BULLETS --> TAILOR
     TAILOR -->|"sin bullets (422)"| BULLETS
     TAILOR --> DL["📄 PDF + DOCX"]
 
-    NAV["Header: Tailor · Empleos · Bullets · Perfil"] -.-> TAILOR
+    NAV["Header: Tailor · Historial · Bullets · Perfil"] -.-> TAILOR
     NAV -.-> EXP
     NAV -.-> BULLETS
     NAV -.-> PROFILE["/profile<br/>ver + editar preferencias"]

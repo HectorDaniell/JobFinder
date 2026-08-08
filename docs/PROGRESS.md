@@ -1,28 +1,31 @@
 # JobFinder — Progreso de implementación
 
-> Fecha de inicio: 2026-06-22 · Última actualización: 2026-08-06
+> Fecha de inicio: 2026-06-22 · Última actualización: 2026-08-08
 
 ## 📍 Estado actual
 
 **Fase 1 (Tailoring) COMPLETA y en uso real con Claude.** Flujo de punta a punta:
-crear perfil → empleos → banco de bullets → pegar una oferta → descargar CV y carta
-en PDF/DOCX, sin datos inventados. El **Sprint 6** endureció el producto contra los
-fallos que aparecieron al usarlo de verdad y saldó la deuda del `jsonb`.
+crear perfil → historial (empleos, proyectos, educación) → banco de bullets →
+pegar una oferta → descargar CV y carta en PDF/DOCX, sin datos inventados. El
+**Sprint 6** endureció el producto contra los fallos que aparecieron al usarlo de
+verdad, saldó la deuda del `jsonb`, y generalizó `Experience` a un contenedor con
+cobertura garantizada — el refinamiento de producto que el propio Sprint 6 había
+dejado pendiente.
 
 | Sprint | Estado |
 |---|---|
 | 0 Setup · 1 Repos+BD · 2 Claude · 3 DocGen · 4 API · 5 Web | ✅ completos |
-| **6 Uso real** — Experience, CV agrupado, guardrails, UX, `jsonb` | ✅ completo |
+| **6 Uso real** — Experience, CV agrupado, guardrails, UX, `jsonb`, contenedores | ✅ completo |
 | **Fase 2** — Ingesta (Gmail + APIs de bolsas) + Matching | ⬜ siguiente |
 | Fase 3 — Postulación + Tracking · Fase 4 — Aprendizaje | ⬜ |
 
-- **Tests:** 104 verdes (core 10 · llm 36 · documents 24 · api 34).
+- **Tests:** 121 verdes (core 11 · llm 37 · documents 25 · api 48).
 - **Deuda del `jsonb` saldada** (ADR-0024): ya se puede consultar JSON desde SQL,
   que es lo que necesita la Capa 1 del embudo.
-- **Pendiente antes de la Fase 2 (refinamiento de producto):** una `Experience`
-  necesita descripción propia, independiente de la vacante — hoy un empleo sin
-  bullets seleccionados sale con encabezado y fechas pero sin ninguna línea
-  debajo (ADR-0026).
+- **Refinamiento de producto resuelto**: `Experience` es ahora un contenedor
+  genérico (`kind: job | project | education`) y `TailorDocuments` garantiza que
+  ningún contenedor quede sin al menos un bullet real — ver ADR-0028. Esto era
+  el bloqueante que se había dejado pendiente al cerrar el Sprint 6 original.
 - El detalle de cada sprint está más abajo, en orden cronológico (este archivo es
   un **log**: las secciones antiguas se conservan como historia, no como estado).
 
@@ -685,3 +688,109 @@ tres caminos reales contra la API viva: lectura, `PATCH` e `INSERT`.
 ---
 
 ### 🚀 Sprint 6 = COMPLETAMENTE FUNCIONAL
+
+---
+
+## 📅 SESIÓN 9 — Sprint 6 (cont.): `Experience` como contenedor genérico
+
+**Fecha:** 2026-08-08
+
+### ✅ COMPLETADO
+
+**Objetivo:** el Sprint 6 había dejado pendiente el refinamiento de producto que
+esta sesión resuelve — probar el flujo contra Claude con datos reales mostró
+empleos con encabezado y fechas pero **sin ninguna línea debajo** (el LLM no
+seleccionó ningún bullet suyo para esa vacante). La corrección obvia,
+`Experience.description` como texto estático, plantea una pregunta que no tiene
+buena respuesta: si el hueco se tapa con texto fijo, ¿para qué sirven los
+bullets? Y si los bullets siguen siendo lo único que se adapta, ¿en qué se
+diferencia esto de un perfil de LinkedIn? Antes de seguir a la Fase 2 había que
+resolver esa pregunta de fondo, no solo el síntoma.
+
+#### ✅ 1. Diagnóstico: no faltaba un campo, faltaba una regla
+
+El problema no era el modelo de datos — era que se le pedía al LLM "elige los
+bullets más relevantes", y esa pregunta no es la misma que "arma el mejor CV
+posible". Un CV real nunca deja un puesto en blanco. Esa es una regla de
+**composición** que faltaba en el sistema, no un dato que faltara en el modelo.
+
+Persiguiendo ese diagnóstico salió a la luz un segundo problema, estructural:
+proyectos y educación no eran contenedores reales, sino bullets sueltos
+agrupados por `sourceRole` (texto libre) — por eso el proyecto personal salía
+titulado como una concatenación de palabras en vez de tener nombre y fecha
+propios, como cualquier entrada real de un CV.
+
+#### ✅ 2. `Experience` se generaliza a contenedor con `kind`
+
+- `kind: 'job' | 'project' | 'education'`, inmutable tras crear. `organization`
+  y `title` se **reinterpretan** por tipo (empresa/rol, contexto/proyecto,
+  institución/título) en vez de sumar columnas específicas por tipo.
+- `Bullet.experienceId` pasa a ser **obligatorio** — ya no existe el bullet
+  suelto. `sourceRole` desaparece: era el apaño que este cambio hace innecesario.
+- `BulletCategory` baja de 4 a 2 valores (`experience` | `achievement`): una
+  distinción editorial, independiente de DÓNDE vive el bullet (eso lo responde
+  `kind` ahora).
+- Migración `0003_experience_as_container.sql` (9 pasos, idempotente): agrupa
+  los bullets huérfanos existentes por su `sourceRole` en contenedores nuevos.
+  `Bullet.experienceId NOT NULL` obliga a que el borrado de un contenedor
+  **cascadee** a sus bullets (antes quedaban huérfanos con `SET NULL`) — único
+  comportamiento consistente con "todo bullet pertenece a un contenedor".
+
+#### ✅ 3. Cobertura garantizada — el LLM propone, el sistema verifica
+
+- `TailorDocuments.withEducation` se generaliza a `withGuaranteedCoverage`:
+  cubre empleos, proyectos y educación con el mismo mecanismo que antes solo
+  protegía a la formación (ADR-0026). Por cada contenedor que quede sin ningún
+  bullet seleccionado, se añade determinísticamente el mejor bullet real del
+  banco por solapamiento de skills — nunca por el LLM, así que la garantía de
+  cero invención no se toca y no se gasta ninguna llamada adicional.
+- Prompt (`tailor-cv.txt` v1.2): agrupa el banco por contenedor (`[Group N]`) y
+  pide explícitamente que la selección represente TODA la trayectoria, para que
+  el sistema necesite recurrir a la cobertura garantizada lo menos posible.
+- **ADR-0028** documenta la decisión completa, incluida la respuesta directa a
+  "¿en qué se diferencia esto de LinkedIn?": el banco es un superconjunto
+  deliberado — más evidencia de la que cabe en un CV — y dos vacantes distintas
+  producen dos CV distintos del mismo material.
+
+#### ✅ 4. Las cinco capas actualizadas
+
+`core` (entidades + caso de uso) → `db` (schema + migración + repos + seed) →
+`llm` (prompt + agrupación + adapter) → `documents` (modelo simplificado, ya no
+necesita distinguir bullets "sin contexto") → `api` (schemas/DTOs/controllers) →
+`web` (formularios con selector de `kind`, pantalla `/experiences` con tres
+secciones, nav "Historial").
+
+### Tests
+
+**121 verdes** (core 11 · llm 37 · documents 25 · api 48), desde los 104 del
+Sprint 6. Se cerró además una brecha de cobertura preexistente:
+`experiences.controller.ts` no tenía tests unitarios propios — ahora tiene 12.
+De paso se corrigieron fixtures rotos que el gap de tipos en `tests/` (no
+cubierto por `tsc`, ver STRUCTURE.md) dejaba pasar en silencio: un filtro sobre
+`sourceRole` que siempre evaluaba a `undefined`, y un e2e con la forma vieja de
+`TailoredCv.bullets`.
+
+### Verificación
+
+Contra la base de datos real: los 6 contenedores y 17 bullets existentes
+migraron correctamente. Se ejercitó el caso adverso a propósito — un LLM
+simulado que solo cubrió 1 de 6 contenedores — y el CV final terminó con los 6
+contenedores con contenido, cero huecos. Verificación visual en el navegador de
+`/experiences` (tres secciones), `/bullets` (selector agrupado por tipo) y los
+formularios cambiando de campos según `kind`, sin errores de consola.
+
+### ⏳ Lo que NO entra en esta sesión
+
+- **Datos placeholder**: los contenedores de proyecto/educación que la
+  migración creó automáticamente a partir de bullets huérfanos tienen título y
+  fecha aproximados (el texto de `sourceRole` y el `created_at` más antiguo del
+  grupo) — necesitan edición manual del usuario vía `/experiences`. Es un
+  placeholder explícito, no un dato inventado por el sistema (ver ADR-0028).
+- RF-04 (importar CV desde Google Docs) sigue pendiente.
+- Sin tests automatizados de la web.
+- pgvector, embeddings y `packages/sources` siguen vacíos → Fase 2, ahora sin
+  bloqueantes de producto pendientes.
+
+---
+
+### 🚀 Sesión 9 = COMPLETAMENTE FUNCIONAL · **Fase 2 desbloqueada**
