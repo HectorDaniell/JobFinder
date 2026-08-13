@@ -30,7 +30,9 @@ export function createFakeLlm(bullets: BulletProvider): LlmPort {
 
       // "Selección" plausible: primero los bullets cuyas skills aparecen en la
       // descripción de la oferta. Nunca inventa texto: usa los bullets tal cual.
-      const jd = job.description.toLowerCase();
+      // El caso de uso rechaza las vacantes delgadas antes de llegar aquí
+      // (ADR-0029); `?? ''` solo evita que el doble sea más estricto que el real.
+      const jd = (job.description ?? '').toLowerCase();
       const scored = [...bank].sort((a, b) => matches(b, jd) - matches(a, jd));
       const selected = scored.slice(0, 6);
 

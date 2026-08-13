@@ -25,7 +25,10 @@ export const TailorCoverLetterInputSchema = z.object({
   job: z
     .custom<import('@jobfinder/core').Job>()
     .refine(
-      (j) => Boolean(j?.description) && j.description.length >= 50,
+      // Una vacante DELGADA (aún sin descripción) no llega hasta aquí: el caso
+      // de uso la rechaza antes (ADR-0029). Este guardrail sigue siendo la red
+      // por si llegara, y ahora `description` es opcional en el dominio.
+      (j) => (j?.description?.length ?? 0) >= 50,
       'Job description must be at least 50 characters'
     ),
   profile: z.custom<import('@jobfinder/core').Profile>(),

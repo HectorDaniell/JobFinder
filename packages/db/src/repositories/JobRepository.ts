@@ -26,6 +26,8 @@ export class JobRepository {
       salary: job.salary as unknown as Record<string, unknown>,
       raw: job.raw as unknown as Record<string, unknown>,
       dedupHash: job.dedupHash,
+      enrichmentFailed: job.enrichmentFailed,
+      enrichedBy: job.enrichedBy,
     };
 
     const inserted = await this.db
@@ -90,6 +92,8 @@ export class JobRepository {
         postedAt: job.postedAt,
         salary: job.salary as unknown as Record<string, unknown>,
         raw: job.raw as unknown as Record<string, unknown>,
+        enrichmentFailed: job.enrichmentFailed,
+        enrichedBy: job.enrichedBy,
       })
       .where(eq(schema.job.id, job.id))
       .returning();
@@ -116,12 +120,14 @@ export class JobRepository {
       location: row.location ?? undefined,
       modality: row.modality as 'remote' | 'hybrid' | 'onsite' | 'unknown',
       seniority: row.seniority as 'junior' | 'mid' | 'senior' | 'lead' | 'unknown',
-      description: row.description,
+      description: row.description ?? undefined,
       url: row.url,
       postedAt: row.postedAt ?? row.ingestedAt,
       salary: (row.salary as { min?: number; max?: number; currency?: string }) ?? undefined,
       raw: (row.raw as Record<string, unknown>) ?? {},
       dedupHash: row.dedupHash,
+      enrichmentFailed: row.enrichmentFailed,
+      enrichedBy: row.enrichedBy ?? undefined,
       ingestedAt: row.ingestedAt,
     });
   }

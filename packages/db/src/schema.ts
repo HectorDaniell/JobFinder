@@ -5,6 +5,7 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  boolean,
 } from 'drizzle-orm/pg-core';
 // `jsonb` propio, NO el de drizzle-orm: el de serie guarda el JSON como cadena
 // y lo vuelve inconsultable desde SQL. Ver columns.ts y ADR-0024.
@@ -107,12 +108,20 @@ export const job = pgTable(
     location: text('location'),
     modality: text('modality').default('unknown'), // 'remote' | 'hybrid' | 'onsite'
     seniority: text('seniority').default('unknown'), // 'junior' | 'mid' | 'senior' | 'lead'
-    description: text('description').notNull(),
+    // Nullable: a job discovered from an alert email arrives THIN (no
+    // description). Enrichment is a separate stage that runs after funnel
+    // layer 1. See ADR-0029 and core's Job entity.
+    description: text('description'),
     url: text('url').notNull(),
     postedAt: timestamp('posted_at'),
     salary: jsonb('salary'), // { min?, max?, currency? }
     raw: jsonb('raw'), // Raw data from source
     dedupHash: text('dedup_hash').notNull(), // For identifying duplicates
+    // The enrichment cascade ran to exhaustion and resolved nothing. Stored
+    // because "never tried" and "tried and failed" both look like a missing
+    // description; without it, dead ends get retried on every scheduled run.
+    enrichmentFailed: boolean('enrichment_failed').default(false).notNull(),
+    enrichedBy: text('enriched_by'), // which cascade step won, for the hit rate
     ingestedAt: timestamp('ingested_at').defaultNow().notNull(),
   },
   (table) => ({
