@@ -15,7 +15,7 @@
     "start": "pnpm --filter api run start",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc --noEmit && pnpm --filter=./apps/* run type-check",
     "test": "vitest",
     "test:cov": "vitest --coverage",
     "migrate": "pnpm --filter db run migrate",

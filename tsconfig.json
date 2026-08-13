@@ -37,6 +37,16 @@
       "module": "CommonJS"
     }
   },
-  "include": ["packages/*/src/**/*", "apps/*/src/**/*"],
+  // Solo los packages. Las apps NO entran aquí: cada una necesita opciones que
+  // esta config no tiene (NestJS exige `experimentalDecorators`; Next exige
+  // `jsx`), así que comprobarlas desde la raíz producía ~74 errores falsos de
+  // decoradores y dejaba `pnpm type-check` en rojo permanente — inservible como
+  // señal. Cada app se comprueba con SU tsconfig, vía su propio script
+  // `type-check`, y la raíz los encadena. Ver el script `type-check`.
+  //
+  // Los packages sí se quedan: aquí los `paths` de arriba resuelven
+  // `@jobfinder/*` al CÓDIGO FUENTE, así que un cambio en `core` rompe al
+  // instante a quien lo consuma, sin depender de que `dist` esté recompilado.
+  "include": ["packages/*/src/**/*"],
   "exclude": ["node_modules", "dist"]
 }
