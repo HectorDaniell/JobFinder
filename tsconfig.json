@@ -47,6 +47,13 @@
   // Los packages sí se quedan: aquí los `paths` de arriba resuelven
   // `@jobfinder/*` al CÓDIGO FUENTE, así que un cambio en `core` rompe al
   // instante a quien lo consuma, sin depender de que `dist` esté recompilado.
-  "include": ["packages/*/src/**/*"],
+  // `tests` y `scripts` entran además de `src`: los tsconfig de cada package
+  // solo incluyen `src` (para no emitir tests al `dist`), así que hasta ahora
+  // NINGÚN test se comprobaba de tipos. El hueco dejaba pasar fixtures que
+  // mentían en silencio — un `DocumentArtifact` sin `kind`, un `sourceRole` que
+  // se eliminó en ADR-0028— y que aun así pasaban en verde, porque `toEqual`
+  // ignora las propiedades `undefined`. Aquí no se emite nada (`--noEmit`), así
+  // que incluirlos no afecta a ningún build.
+  "include": ["packages/*/src/**/*", "packages/*/tests/**/*", "packages/*/scripts/**/*"],
   "exclude": ["node_modules", "dist"]
 }

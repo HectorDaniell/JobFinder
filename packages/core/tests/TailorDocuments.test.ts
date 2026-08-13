@@ -108,10 +108,11 @@ const bankBullet = (
     updatedAt: new Date('2026-07-01'),
   });
 
-const artifact = (filename: string): DocumentArtifact => ({
+const artifact = (filename: string, kind: 'cv' | 'cover'): DocumentArtifact => ({
   bytes: new Uint8Array([1, 2, 3]),
   mimeType: 'application/octet-stream',
   filename,
+  kind,
 });
 
 // ---- dobles de los puertos (mocks) ----
@@ -138,8 +139,8 @@ beforeEach(() => {
     extractJobs: vi.fn(),
   };
   documents = {
-    generateCv: vi.fn().mockResolvedValue(artifact('cv.pdf')),
-    generateCoverLetter: vi.fn().mockResolvedValue(artifact('cover.pdf')),
+    generateCv: vi.fn().mockResolvedValue(artifact('cv.pdf', 'cv')),
+    generateCoverLetter: vi.fn().mockResolvedValue(artifact('cover.pdf', 'cover')),
   };
 });
 

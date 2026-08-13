@@ -41,7 +41,6 @@ function origin(i: number, text: string) {
     text,
     category: mockBullets[i].category,
     experienceId: mockBullets[i].experienceId,
-    sourceRole: mockBullets[i].sourceRole,
     skills: mockBullets[i].skills,
   };
 }
