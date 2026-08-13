@@ -5,6 +5,7 @@ import {
   Experience,
   Bullet,
   NotFoundError,
+  ValidationError,
   TailorDocuments,
   type ProfileProvider,
   type ExperienceProvider,
@@ -318,5 +319,21 @@ describe('TailorDocuments', () => {
       useCase.execute({ profileId: 'missing', job, lang: 'en', formats: ['pdf'] })
     ).rejects.toBeInstanceOf(NotFoundError);
     expect(llm.tailorCv).not.toHaveBeenCalled();
+  });
+
+  it('rechaza una vacante DELGADA antes de gastar una llamada al LLM', async () => {
+    // Adaptar es la Capa 4 del embudo: solo recibe vacantes ya enriquecidas
+    // (ADR-0029). Sin descripción no hay contra qué medir la relevancia, y el CV
+    // saldría silenciosamente peor — mejor un error tipado que un mal CV.
+    const thinJob = new Job({ ...job, description: undefined });
+    const useCase = new TailorDocuments(profiles, experiences, bullets, llm, documents);
+
+    await expect(
+      useCase.execute({ profileId: 'p-1', job: thinJob, lang: 'en', formats: ['pdf'] })
+    ).rejects.toBeInstanceOf(ValidationError);
+
+    expect(llm.tailorCv).not.toHaveBeenCalled();
+    expect(llm.tailorCoverLetter).not.toHaveBeenCalled();
+    expect(profiles.findById).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,12 @@
 export { Profile, PreferenceSchema, type Preferences } from './domain/entities/Profile';
 export { Bullet, type BulletCategory } from './domain/entities/Bullet';
 export { Experience, type ExperienceKind } from './domain/entities/Experience';
-export { Job, type JobSeniority, type JobModality } from './domain/entities/Job';
+export {
+  Job,
+  type JobSeniority,
+  type JobModality,
+  type EnrichmentStatus,
+} from './domain/entities/Job';
 
 // Value Objects
 export { JobScore, type ApplyDecision } from './domain/value-objects/JobScore';
@@ -12,6 +17,14 @@ export {
   type JobSourcePort,
   type RawJob,
 } from './ports/JobSourcePort';
+export {
+  type JobEnricherPort,
+  type EnrichmentResult,
+} from './ports/JobEnricherPort';
+export {
+  type EmailReaderPort,
+  type EmailMessage,
+} from './ports/EmailReaderPort';
 export {
   type LlmPort,
   type ExtractedJob,

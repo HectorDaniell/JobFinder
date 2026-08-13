@@ -13,7 +13,7 @@ import type { Experience } from '../domain/entities/Experience';
 import type { Bullet } from '../domain/entities/Bullet';
 import type { DocFormat, DocumentArtifact, DocumentPort } from '../ports/DocumentPort';
 import type { LlmPort, TailoredBullet, TailoredCv } from '../ports/LlmPort';
-import { NotFoundError } from '../errors/DomainError';
+import { NotFoundError, ValidationError } from '../errors/DomainError';
 
 /**
  * Puerto DEFINIDO POR EL CONSUMIDOR: lo único que el caso de uso necesita para
@@ -66,6 +66,20 @@ export class TailorDocuments {
   async execute(input: TailorInput): Promise<TailorResult> {
     const { profileId, job, lang, formats } = input;
 
+    // 0. Una vacante DELGADA no se puede adaptar: sin descripción no hay nada
+    //    contra qué medir la relevancia, y el CV saldría silenciosamente peor.
+    //    Adaptar es la Capa 4 del embudo y solo recibe vacantes enriquecidas
+    //    (ADR-0029); comprobarlo aquí convierte esa precondición implícita en un
+    //    error tipado en vez de un CV degradado sin aviso.
+    if (!job.description) {
+      throw new ValidationError(
+        `La vacante "${job.title}" aún no tiene descripción (${job.enrichmentStatus}). ` +
+          'No se puede adaptar el CV sin ella.',
+        'job.description'
+      );
+    }
+    const jd = job.description.toLowerCase();
+
     // 1. Cargar el perfil (o fallar con un error de dominio tipado → 404).
     const profile = await this.profiles.findById(profileId);
     if (!profile) {
@@ -85,8 +99,8 @@ export class TailorDocuments {
     //    vacante; el resto son reglas de negocio del CV, y por eso viven aquí
     //    en el caso de uso y no en el adapter de documentos.
     const cv = withCuratedSkills(
-      withGuaranteedCoverage(tailored, bank, experiences, job, lang),
-      job
+      withGuaranteedCoverage(tailored, bank, experiences, jd, lang),
+      jd
     );
 
     // 4. Convertir a archivos: un CV y una carta por cada formato pedido.
@@ -125,11 +139,10 @@ function withGuaranteedCoverage(
   cv: TailoredCv,
   bank: Bullet[],
   experiences: Experience[],
-  job: Job,
+  jd: string,
   lang: 'es' | 'en'
 ): TailoredCv {
   const covered = new Set(cv.bullets.map((b) => b.experienceId));
-  const jd = job.description.toLowerCase();
 
   const additions: TailoredBullet[] = [];
   for (const exp of experiences) {
@@ -176,9 +189,7 @@ const MAX_SKILLS = 15;
  * Si el banco no tuviera ninguna etiqueta, se conservan las del LLM: es mejor
  * eso que un CV sin sección de habilidades.
  */
-function withCuratedSkills(cv: TailoredCv, job: Job): TailoredCv {
-  const jd = job.description.toLowerCase();
-
+function withCuratedSkills(cv: TailoredCv, jd: string): TailoredCv {
   // Clave en minúsculas para colapsar duplicados de mayúsculas ("WordPress" y
   // "Wordpress" son la misma skill); se muestra la primera grafía que apareció.
   const byKey = new Map<string, { label: string; uses: number }>();
