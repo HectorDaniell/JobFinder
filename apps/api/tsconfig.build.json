@@ -1,0 +1,20 @@
+{
+  // Config de COMPILACIÓN (la que usa `nest build`). El CLI de Nest la toma por
+  // convención cuando existe, y es la razón de que el proyecto tenga dos:
+  //
+  //   tsconfig.json        → comprobar tipos (amplio: src + tests, sin emitir)
+  //   tsconfig.build.json  → compilar     (estrecho: solo src, emite a dist/)
+  //
+  // Sin esta separación había que elegir: o el build arrastraba los tests al
+  // `dist`, o los tests nunca se comprobaban de tipos. Se elegía lo segundo en
+  // silencio, y así pasaron fixtures que afirmaban contra formas que ya no
+  // existían (ver el commit que añadió tests/ al include de la raíz).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Vuelve a acotar la raíz a src/ para que el `dist` quede plano
+    // (dist/main.js), no anidado bajo dist/src/.
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "tests", "**/*.test.ts"]
+}
