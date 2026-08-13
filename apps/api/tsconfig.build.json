@@ -13,7 +13,10 @@
   "compilerOptions": {
     // Vuelve a acotar la raíz a src/ para que el `dist` quede plano
     // (dist/main.js), no anidado bajo dist/src/.
-    "rootDir": "./src"
+    "rootDir": "./src",
+    // El único sitio del proyecto donde la API sí emite. tsconfig.json lo tiene
+    // en true a propósito, para que comprobar tipos no pueda ensuciar el árbol.
+    "noEmit": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests", "**/*.test.ts"]
