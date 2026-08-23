@@ -216,6 +216,7 @@ añadió una migración, tu BD se queda atrás sin avisar. Migraciones actuales:
 | `0001_add_experience` | Tabla `experience` + `bullet.experience_id` |
 | `0002_fix_jsonb_double_encoding` | Repara el JSON guardado como cadena (ADR-0024) |
 | `0003_experience_as_container` | `experience.kind` + `bullet.experience_id` obligatorio (ADR-0028) |
+| `0004_thin_jobs` | `job.description` pasa a nullable + `enrichment_failed` y `enriched_by` (ADR-0029) |
 
 ### 4.3 Levantar las apps (dos opciones)
 

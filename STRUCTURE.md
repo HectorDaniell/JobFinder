@@ -1,6 +1,6 @@
 # Project Structure
 
-> Estructura **real** del repositorio (actualizada 2026-08-08, Sprint 6 + contenedores).
+> Estructura **real** del repositorio (actualizada 2026-08-23, inicio de la Fase 2).
 > Lo marcado con ⬜ existe como carpeta/esqueleto pero se implementa en fases futuras.
 
 ```
@@ -12,7 +12,7 @@ jobfinder/
 │   ├── PROGRESS.md         # Log de lo realmente construido  ← estado actual
 │   ├── FLUJO.md            # Diagramas: el recorrido completo end-to-end
 │   ├── SETUP.md            # Instalación y puesta en marcha
-│   └── adr/                # Architecture Decision Records (0009–0028)
+│   └── adr/                # Architecture Decision Records (0009–0029)
 │
 ├── apps/
 │   ├── api/                        # REST API (NestJS + Fastify) — adaptador de ENTRADA
@@ -31,7 +31,7 @@ jobfinder/
 │   │   │   ├── bullets/            # CRUD de bullets (anidado bajo perfil)
 │   │   │   ├── tailor/             # POST /profiles/:id/tailor
 │   │   │   └── health/
-│   │   ├── tests/                  # unitarios + e2e (34)
+│   │   ├── tests/                  # unitarios + e2e (48)
 │   │   └── README.md
 │   │
 │   ├── web/                        # UI (Next.js 14, App Router)
@@ -58,9 +58,10 @@ jobfinder/
 ├── packages/
 │   ├── core/                       # DOMINIO — no depende de nadie
 │   │   ├── src/
-│   │   │   ├── domain/entities/    # Profile · Job · Bullet · Experience
+│   │   │   ├── domain/entities/    # Profile · Job (delgado o enriquecido) · Bullet · Experience
 │   │   │   ├── domain/value-objects/  # JobScore
-│   │   │   ├── ports/              # LlmPort · DocumentPort · JobSourcePort · EmbedderPort
+│   │   │   ├── ports/              # LlmPort · DocumentPort · EmbedderPort ⬜ ·
+│   │   │   │                       # JobSourcePort · JobEnricherPort · EmailReaderPort (ADR-0029)
 │   │   │   ├── use-cases/          # TailorDocuments (compone el CV, no solo orquesta)
 │   │   │   ├── errors/             # DomainError y subclases (con statusCode HTTP)
 │   │   │   └── index.ts            # barrel
@@ -71,8 +72,10 @@ jobfinder/
 │   │   ├── src/columns.ts          # `jsonb` propio, sin doble codificación (ADR-0024)
 │   │   ├── src/repositories/       # Profile · Bullet · Experience · Job · JobScore
 │   │   ├── migrations/             # 0000 inicial · 0001 experience · 0002 fix jsonb ·
-│   │   │                           # 0003 experience como contenedor (ADR-0028)
+│   │   │                           # 0003 experience como contenedor (ADR-0028) ·
+│   │   │                           # 0004 vacantes delgadas (ADR-0029)
 │   │   └── scripts/                # migrate.js · seed.ts
+│   │                               # ⚠️ sin tests: deuda abierta desde el Sprint 1
 │   │
 │   ├── llm/                        # Claude (adaptador de SALIDA)
 │   │   ├── src/claude/             # client · adapter · guardrails · prompts/*.txt
@@ -81,9 +84,10 @@ jobfinder/
 │   ├── documents/                  # PDF/DOCX ATS-friendly (adaptador de SALIDA)
 │   │   └── src/                    # model/ (mappers puros) · exporters/ · adapter.ts
 │   │
-│   ├── sources/  ⬜                # adapters de fuentes de vacantes (Fase 2)
-│   │                               # Gmail · GetOnBoard · Remotive · Adzuna
-│   └── shared/   ⬜                # utilidades comunes (vacío por ahora)
+│   ├── sources/  ⬜                # VACÍO. Adapters de ingesta (Fase 2, ADR-0029):
+│   │                               # descubrir → Gmail · Remotive · Adzuna
+│   │                               # enriquecer → Greenhouse · Lever · Ashby · captura
+│   └── shared/   ⬜                # VACÍO. Utilidades comunes
 │
 ├── docker-compose.yml              # Postgres 16 (:5433) + Redis (:6379)
 ├── pnpm-workspace.yaml             # workspaces + allowBuilds (supply-chain)

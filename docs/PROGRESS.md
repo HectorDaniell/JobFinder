@@ -1,33 +1,47 @@
 # JobFinder — Progreso de implementación
 
-> Fecha de inicio: 2026-06-22 · Última actualización: 2026-08-08
+> Fecha de inicio: 2026-06-22 · Última actualización: 2026-08-23
 
 ## 📍 Estado actual
 
 **Fase 1 (Tailoring) COMPLETA y en uso real con Claude.** Flujo de punta a punta:
 crear perfil → historial (empleos, proyectos, educación) → banco de bullets →
-pegar una oferta → descargar CV y carta en PDF/DOCX, sin datos inventados. El
-**Sprint 6** endureció el producto contra los fallos que aparecieron al usarlo de
-verdad, saldó la deuda del `jsonb`, y generalizó `Experience` a un contenedor con
-cobertura garantizada — el refinamiento de producto que el propio Sprint 6 había
-dejado pendiente.
+pegar una oferta → descargar CV y carta en PDF/DOCX, sin datos inventados.
+
+**La Fase 2 (Ingesta) está EMPEZADA**: su diseño está cerrado en ADR-0029 y el
+primer corte de código —las vacantes *delgadas* y sus dos puertos— ya está en
+`main`. Lo que falta es todo lo que los consume.
 
 | Sprint | Estado |
 |---|---|
 | 0 Setup · 1 Repos+BD · 2 Claude · 3 DocGen · 4 API · 5 Web | ✅ completos |
 | **6 Uso real** — Experience, CV agrupado, guardrails, UX, `jsonb`, contenedores | ✅ completo |
-| **Fase 2** — Ingesta (Gmail + APIs de bolsas) + Matching | ⬜ siguiente |
+| **Fase 2** — diseño (ADR-0029) + contratos de ingesta + `Job` delgado | 🟡 **en curso** |
+| Fase 2 — parsers, `GmailSource`, cascada de enriquecimiento, embudo | ⬜ siguiente |
 | Fase 3 — Postulación + Tracking · Fase 4 — Aprendizaje | ⬜ |
 
-- **Tests:** 121 verdes (core 11 · llm 37 · documents 25 · api 48).
+- **Tests:** 128 verdes (core 18 · llm 37 · documents 25 · api 48).
 - **Deuda del `jsonb` saldada** (ADR-0024): ya se puede consultar JSON desde SQL,
   que es lo que necesita la Capa 1 del embudo.
 - **Refinamiento de producto resuelto**: `Experience` es ahora un contenedor
   genérico (`kind: job | project | education`) y `TailorDocuments` garantiza que
-  ningún contenedor quede sin al menos un bullet real — ver ADR-0028. Esto era
-  el bloqueante que se había dejado pendiente al cerrar el Sprint 6 original.
+  ningún contenedor quede sin al menos un bullet real — ver ADR-0028.
+- **`pnpm type-check` vuelve a ser señal útil** y cubre además los tests de los
+  packages y de `apps/api`, que hasta ahora no se comprobaban de tipos.
 - El detalle de cada sprint está más abajo, en orden cronológico (este archivo es
   un **log**: las secciones antiguas se conservan como historia, no como estado).
+
+### Deuda abierta (lo que este log NO debe dejar olvidar)
+
+| Qué | Desde |
+|---|---|
+| `packages/db` sin un solo test — el Sprint 1 dio por entregada una cobertura que nunca se escribió | Sprint 1 |
+| `apps/web` sin tests automatizados | Sprint 5 |
+| RF-04: importar el CV desde Google Docs | Fase 1 |
+| `usageSink` sin cablear → `llm_usage` vacía, el KPI de coste no se puede medir | Sprint 2 |
+| Persistir los documentos generados (`DocumentRepository`) | Fase 3 |
+| `pnpm test` en la raíz arranca en modo *watch* y no termina | Sprint 0 |
+| `Job.generateDedupHash` normaliza pero no hashea | Sprint 1 |
 
 ---
 
@@ -280,6 +294,13 @@ Todas las 4 configuraciones son **estándares de la industria**:
   - `document` (CV/cover letter generados, versionados)
   - `llm_usage` (tracking de costos)
   - `email_message` (correos parseados)
+
+> ⚠️ **Corrección (2026-08-23).** Esta lista tiene dos errores que se arrastraron
+> durante meses: **`email_message` nunca se creó** —no está en `schema.ts` ni en
+> ninguna migración— y `bullet` **no tiene columna de embeddings** (pgvector sigue
+> sin habilitarse). Las tablas reales de este sprint fueron **9**; `experience`
+> llegó en el Sprint 6 y completó las 10 actuales. `email_message` sigue siendo
+> una tabla *planificada* para la Fase 2.
 
 #### ✅ 2. Repositories implementados
 - **`ProfileRepository`** → CRUD perfil
@@ -794,3 +815,91 @@ formularios cambiando de campos según `kind`, sin errores de consola.
 ---
 
 ### 🚀 Sesión 9 = COMPLETAMENTE FUNCIONAL · **Fase 2 desbloqueada**
+
+---
+
+## 📅 SESIÓN 10 — Fase 2: el diseño de la ingesta y sus primeros contratos
+
+**Fecha:** 2026-08-12
+
+### ✅ COMPLETADO
+
+**Objetivo:** empezar la Fase 2. Al abrir el Gmail real para diseñar la ingesta,
+el plan original se rompió antes de escribir una línea de código.
+
+#### ✅ 1. El supuesto roto: los correos no traen la descripción
+
+RF-06 decía que el sistema extrae de cada correo *"título, empresa, enlace,
+**descripción**"*. Esa última palabra no se sostiene: los correos de LinkedIn,
+Glassdoor y Computrabajo son **notificaciones** —una tarjeta y una URL de
+seguimiento—, no vacantes. El JD vive detrás del enlace, tras un login, y el
+botón "Postular" muchas veces redirige a un tercer sitio.
+
+Y las puertas alternativas están cerradas (verificado en agosto de 2026):
+LinkedIn no expone API pública de *búsqueda*, y Glassdoor cerró su API para
+desarrolladores. El scraping ya estaba prohibido por D2 del PRD.
+
+**El diagnóstico** no fue "de dónde vienen las vacantes" sino que la ingesta
+trataba como un solo paso dos trabajos con propiedades opuestas: **descubrir**
+(el correo es excelente) y **enriquecer** (el correo es inútil).
+
+#### ✅ 2. ADR-0029 — ingesta en dos tiempos
+
+Siete decisiones, entre ellas: dos puertos separados; una taxonomía de fuentes en
+tres tipos que no son intercambiables (ATS pública / bolsa con API / agregador);
+el enriquecimiento **dentro del embudo, después de la Capa 1**; una cascada que
+degrada hasta la captura asistida; la zona ámbar delimitada por extensión; y el
+parseo determinista por remitente con el LLM como **respaldo**, invirtiendo RF-06.
+
+Se corrigió además una afirmación propia sobreafirmada —que una vacante de
+LinkedIn *"casi con certeza"* vive también en una ATS pública—; el ADR la retira
+explícitamente, explica el mecanismo real (sindicación) y sus tres modos de fallo,
+y deja la tasa de acierto **instrumentada** (`enrichedBy`) en vez de supuesta.
+
+#### ✅ 3. Primer corte de código: la vacante delgada
+
+- `Job.description` pasa a **opcional** y aparece `enrichmentStatus`
+  (`thin | enriched | unavailable`), **derivado** para que "enriquecida pero sin
+  descripción" sea irrepresentable. `enrichmentFailed` sí se almacena: "nunca se
+  intentó" y "se intentó y falló" se ven igual desde fuera.
+- Puertos nuevos: `JobEnricherPort` (sin `canHandle`: devolver `null` *es* la
+  respuesta "no es mía") y `EmailReaderPort`, **de solo lectura por diseño**, para
+  que el camino de ingesta nunca sostenga una credencial capaz de enviar correo.
+- Migración `0004_thin_jobs` (idempotente): `description` nullable,
+  `enrichment_failed`, `enriched_by`, con backfill de las filas existentes.
+- El compilador destapó una **precondición latente desde el Sprint 4**:
+  `TailorDocuments` nunca había comprobado que la vacante tuviera descripción.
+  Se cerró con un `ValidationError` explícito antes de gastar ninguna llamada.
+
+#### ✅ 4. `pnpm type-check` vuelve a ser una señal
+
+Estaba en rojo permanente con ~74 errores falsos de decoradores: la config raíz
+incluía `apps/*/src` sin `experimentalDecorators`. Se separó —los packages en la
+raíz, cada app con su propia config— y de paso se descubrió que **`apps/web` no
+se comprobaba en absoluto** (su código vive en `app/`, no en `src/`).
+
+Al extender la comprobación a los `tests/`, que **nunca** se habían tipado,
+aparecieron dos fixtures que mentían en silencio: un `DocumentArtifact` sin `kind`
+y un `sourceRole` eliminado en ADR-0028. Ambos pasaban en verde porque `toEqual`
+ignora las propiedades `undefined`.
+
+`apps/api` recibió la separación convencional de Nest (`tsconfig.json` para
+comprobar, `tsconfig.build.json` para compilar), con `noEmit` fijado en cada una
+para que comprobar tipos sea **estructuralmente incapaz** de ensuciar el árbol.
+
+### Tests
+
+**128 verdes** (core 18 · llm 37 · documents 25 · api 48), desde los 121 de la
+sesión 9. Los 7 nuevos de `core` fijan el estado derivado de la vacante delgada,
+incluido el caso en que una captura posterior resuelve una cascada ya fallida.
+
+### ⏳ Lo que NO entra en esta sesión
+
+- Los parsers deterministas por remitente: quedaron los tres correos de ejemplo
+  descargados y el plan de saneado acordado, pendiente de ejecutar.
+- `packages/sources` sigue vacío. `GmailSource`, la cascada, `POST /capture`,
+  `company_ats` y el embudo: todo pendiente.
+
+---
+
+### 🚀 Sesión 10 = **Fase 2 empezada** (diseño cerrado + contratos en su sitio)

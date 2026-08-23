@@ -263,17 +263,57 @@ siquiera pasa por React — cambia una clase y la cascada CSS repinta todo.
 
 ```mermaid
 flowchart LR
-    F1["① Fuentes<br/>Gmail · APIs"]:::todo --> F2["② Normalización<br/>+ dedup"]:::todo
-    F2 --> F3["③ Matching<br/>reglas→embeddings→LLM"]:::todo
-    F3 --> F4["④ Tailoring<br/>CV + carta"]:::done
-    F4 --> F5["⑤ Revisión<br/>la UI"]:::done
-    F5 --> F6["⑥ Postulación<br/>borrador Gmail · ATS"]:::todo
-    F6 --> F7["⑦ Tracking<br/>+ aprendizaje"]:::todo
+    F1["① Descubrir<br/>correo · bolsas"]:::todo --> F2["② Dedup<br/>+ Capa 1 reglas"]:::todo
+    F2 --> F3["③ Enriquecer<br/>cascada"]:::todo
+    F3 --> F4["④ Capas 2–3<br/>embeddings → LLM"]:::todo
+    F4 --> F5["⑤ Tailoring<br/>CV + carta"]:::done
+    F5 --> F6["⑥ Revisión<br/>la UI"]:::done
+    F6 --> F7["⑦ Postulación<br/>borrador Gmail · ATS"]:::todo
+    F7 --> F8["⑧ Tracking<br/>+ aprendizaje"]:::todo
 
     classDef done fill:#065f46,stroke:#34d399,color:#fff
     classDef todo fill:#27272a,stroke:#52525b,color:#a1a1aa
 ```
 
-En la Fase 1 las etapas ① a ③ se sustituyen por **pegar la oferta a mano**: es el
+En la Fase 1 las etapas ① a ④ se sustituyen por **pegar la oferta a mano**: es el
 flujo real de esta fase, no un atajo de pruebas. La Fase 2 construye la ingesta
 para que las vacantes lleguen solas.
+
+### Por qué la ingesta son dos pasos y no uno
+
+El detalle que reordenó la Fase 2 entera: **un correo de alerta no es una vacante,
+es una notificación**. Trae una tarjeta y un enlace de seguimiento; la descripción
+vive detrás, tras un login.
+
+```mermaid
+flowchart LR
+    subgraph DESC["Descubrir — ¿qué vacantes existen?"]
+        D1["📧 Correo<br/><i>LinkedIn, Glassdoor</i>"]
+        D2["🔌 Bolsas con API<br/><i>Remotive, Adzuna</i>"]
+    end
+    DESC --> THIN["Vacante DELGADA<br/>título · empresa · ubicación · URL"]
+    THIN --> L1{"Capa 1 · reglas<br/><i>basta con los metadatos</i>"}
+    L1 -->|descartada| X["🗑️"]
+    L1 -->|sobrevive| ENR
+    subgraph ENR["Enriquecer — ¿qué dice esa vacante?"]
+        direction TB
+        E1["① ¿ya venía completa?"] --> E2["② ATS pública de la empresa"]
+        E2 --> E3["③ JSON-LD de su web 🟡"]
+        E3 --> E4["④ captura asistida"]
+    end
+    ENR --> FULL["Vacante ENRIQUECIDA<br/><i>lista para Capas 2–4</i>"]
+
+    style THIN fill:#27272a,stroke:#52525b,color:#e4e4e7
+    style FULL fill:#065f46,stroke:#34d399,color:#fff
+```
+
+Dos claves de este diseño:
+
+- **El correo es el mejor activo de descubrimiento que tiene el producto.** LinkedIn
+  y Glassdoor ya corren su matching contra tu perfil real, con tu CV y tu historial.
+  Esa personalización es gratis y mejor que cualquier `?q=backend` que pudiéramos armar.
+- **Enriquecer va después de filtrar**, nunca antes. La Capa 1 solo mira metadatos, así
+  que pagar por la descripción de una vacante que se iba a descartar es trabajo tirado.
+
+La cascada **degrada hasta el flujo de la Fase 1**: si ningún paso automático resuelve
+la descripción, la traes tú. Ninguna vacante se pierde. Ver ADR-0029.

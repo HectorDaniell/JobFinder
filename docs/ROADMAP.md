@@ -2,6 +2,10 @@
 
 > Estado: **Fase 1 COMPLETADA** (sprints 0–5) · Inicio: 2026-06-22 · Cierre: 2026-07-31
 > Endurecida con uso real en el **Sprint 6** (2026-08-06 a 2026-08-08), fuera del plan original.
+> **Fase 2 en curso** desde 2026-08-12: diseño cerrado en ADR-0029 y contratos de
+> ingesta en su sitio. El plan detallado de la Fase 2 vive en el
+> [PRD §10](./PRD.md) y en [ADR-0029](./adr/0029-ingesta-en-dos-tiempos-descubrir-y-enriquecer.md),
+> no aquí — este documento cubre la Fase 1.
 >
 > Este documento es el **plan** original. Para lo que realmente se construyó y las
 > desviaciones respecto al plan, ver [PROGRESS.md](./PROGRESS.md).
@@ -107,7 +111,10 @@ pnpm type-check                           # Verifica tipos en todo el monorepo
 #### Deliverables
 - ✅ Migración Drizzle compila y corre
 - ✅ 3 repositorios implementados (profile, bullet, job)
-- ✅ Tests unitarios para cada repositorio (~60% cobertura mínimo)
+- ❌ **Tests unitarios para cada repositorio (~60% cobertura mínimo)** — *nunca se
+  escribieron. `packages/db` no tiene un solo test ni script `test`; el sprint se
+  dio por cerrado igualmente y el hueco pasó inadvertido hasta la revisión del
+  2026-08-23. Los repos se ejercitan hoy solo a mano contra Postgres.*
 - ✅ Seeder de datos de prueba
 - ✅ Documentación: `packages/db/README.md` actualizado
 
@@ -461,10 +468,15 @@ Claude con datos propios. Detalle en [PROGRESS.md](./PROGRESS.md) § Sesión 8:
 
 ## Próximas fases (Fase 2, 3, 4)
 
-Después de Fase 1:
-
-- **Fase 2** (Ingesta + Matching): Gmail API, normalización, embudo de filtrado
-- **Fase 3** (Postulación + Tracking): envío automático, CRM, analítica
+- **Fase 2** (Ingesta + Matching) — **en curso**. El plan de junio decía "Gmail API,
+  normalización, embudo". Al abrir el correo real en agosto se descubrió que los correos
+  de alerta **no traen la descripción** de la vacante, y la fase se rediseñó: la ingesta
+  se parte en **descubrir** (correo y bolsas) y **enriquecer** (cascada que degrada hasta
+  la captura asistida), con el enriquecimiento **después** de la Capa 1 del embudo.
+  Ver [ADR-0029](./adr/0029-ingesta-en-dos-tiempos-descubrir-y-enriquecer.md) y PRD §10.
+- **Fase 3** (Postulación + Tracking): borradores de correo, postulación por API, CRM, analítica
 - **Fase 4** (Aprendizaje): correlación resultados↔features
 
-Pero por ahora, **Fase 1 es el MVPartifact que valida el core del producto**.
+La **Fase 1 fue el MVP que validó el core del producto**, y sigue siendo el peor caso de
+la Fase 2: si el enriquecimiento automático falla del todo, el usuario pega la oferta a
+mano y el flujo funciona igual.

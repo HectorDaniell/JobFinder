@@ -19,7 +19,10 @@ CV, el JSON de la base que no se podía consultar desde SQL, y — al generaliza
 esa última corrección — `Experience` pasó de "solo empleos" a un contenedor
 genérico con cobertura garantizada (ADR-0028).
 
-Siguiente: **Fase 2** (ingesta desde Gmail y APIs de bolsas + embudo de matching).
+🟡 **Fase 2 empezada** — su diseño está cerrado ([ADR-0029](./docs/adr/0029-ingesta-en-dos-tiempos-descubrir-y-enriquecer.md))
+y los contratos de ingesta ya están en el core. La ingesta va en **dos tiempos**:
+*descubrir* que una vacante existe (correo y bolsas) y *enriquecerla* con su
+descripción (cascada que degrada hasta traerla tú). Falta construir los adapters.
 
 - 📄 [Documento de Producto (PRD)](./docs/PRD.md)
 - 🏗️ [Arquitectura Técnica](./docs/ARQUITECTURA.md)
@@ -32,13 +35,13 @@ Siguiente: **Fase 2** (ingesta desde Gmail y APIs de bolsas + embudo de matching
 apps/
   api/    REST API (NestJS + Fastify) — expone el dominio por HTTP
   web/    UI (Next.js) — perfil, historial, bullets y la pantalla de tailoring
-  worker/ colas y tareas programadas (Fase 2)
+  worker/ ⬜ esqueleto: colas y tareas programadas (Fase 2)
 packages/
   core/       dominio: entidades, puertos, casos de uso, errores  (no depende de nadie)
   db/         Drizzle + repositorios (Postgres)
   llm/        adapter de Claude + guardrails anti-invención
   documents/  generación de PDF/DOCX ATS-friendly
-  sources/    adapters de fuentes de vacantes (Fase 2)
+  sources/    ⬜ vacío: adapters de descubrimiento y enriquecimiento (Fase 2)
 ```
 
 Hexagonal: los adapters dependen de `core`; `core` no depende de nadie. El
@@ -67,5 +70,9 @@ para probar el flujo completo con documentos reales.
 
 ## Flujo
 
-`Fuentes → Ingesta → Normalización → Matching (embudo) → Tailoring → Revisión humana →
-Postulación → Tracking → Aprendizaje`
+`Descubrir → Normalizar + dedup → Capa 1 (reglas) → Enriquecer → Capas 2–3 (embeddings, LLM)
+→ Tailoring → Revisión humana → Postulación → Tracking → Aprendizaje`
+
+El enriquecimiento va **después** del primer filtro, no antes: la Capa 1 se resuelve con
+los metadatos que el correo ya trae, así que solo se paga por la descripción de las
+vacantes que sobreviven.
