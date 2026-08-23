@@ -64,6 +64,15 @@ backup_*.sql
 generated/
 output/
 
+# Correos crudos (.eml) — NUNCA se commitean.
+# Un .eml de alerta trae el sobre MIME entero: la dirección real del usuario, su
+# nombre, tokens de seguimiento ligados a la cuenta (midToken, savedSearchId) y
+# enlaces de baja que son CAPACIDADES VIVAS: quien tenga esa URL puede darte de
+# baja de tus alertas. Al repo solo llega el cuerpo HTML decodificado y saneado,
+# como fixture. Los originales se quedan fuera del proyecto.
+# Ver packages/sources/scripts/sanitize-eml.js
+*.eml
+
 # Puppeteer / Chromium descargado
 .local-chromium/
 
