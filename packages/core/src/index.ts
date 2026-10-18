@@ -56,3 +56,10 @@ export {
   type TailorInput,
   type TailorResult,
 } from './use-cases/TailorDocuments';
+export {
+  IngestJobs,
+  type JobStore,
+  type IngestInput,
+  type IngestReport,
+} from './use-cases/IngestJobs';
+
