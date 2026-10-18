@@ -19,10 +19,13 @@ es el comportamiento correcto, no un fallo.
 |---|---|
 | Contrato `EmailJobParser` + `ParseOutcome` | ✅ |
 | Registro/enrutado por remitente | ✅ 12 tests |
-| Parser de LinkedIn | ⬜ pendiente de fixtures |
-| Parser de Glassdoor | ⬜ pendiente de fixtures |
-| `GmailSource` (RF-05, OAuth) | ⬜ |
+| Parser de LinkedIn | ✅ 9 tests (fixture real sanitizado) |
+| Parser de Glassdoor | ✅ 8 tests (fixture real sanitizado) |
+
+
+| `GmailSource` (RF-05, OAuth) | ✅ 5 tests (OAuth2 + decodificación MIME) |
 | Enrichers de ATS (Greenhouse, Lever, Ashby) | ⬜ |
+
 
 ## Por qué parsers deterministas y no un LLM
 

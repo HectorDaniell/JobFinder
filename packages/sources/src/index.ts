@@ -13,4 +13,19 @@
  */
 
 // Email discovery: deterministic parsers, one per sender.
-export { type EmailJobParser, type ParseOutcome, parseJobAlert, extractAddress } from './email';
+export {
+  type EmailJobParser,
+  type ParseOutcome,
+  parseJobAlert,
+  extractAddress,
+  LinkedInJobParser,
+  GlassdoorJobParser,
+  GmailSource,
+  type GmailSourceConfig,
+  EmailAlertSource,
+  type EmailAlertSourceConfig,
+} from './email';
+
+
+
+
