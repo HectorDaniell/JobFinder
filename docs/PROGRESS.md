@@ -16,11 +16,12 @@ primer corte de código —las vacantes *delgadas* y sus dos puertos— ya está
 |---|---|
 | 0 Setup · 1 Repos+BD · 2 Claude · 3 DocGen · 4 API · 5 Web | ✅ completos |
 | **6 Uso real** — Experience, CV agrupado, guardrails, UX, `jsonb`, contenedores | ✅ completo |
-| **Fase 2** — diseño (ADR-0029) + contratos de ingesta + `Job` delgado | 🟡 **en curso** |
-| Fase 2 — parsers, `GmailSource`, cascada de enriquecimiento, embudo | ⬜ siguiente |
+| **Fase 2 / Sprint 7** — Ingesta por email: parsers LinkedIn/Glassdoor, GmailSource, IngestJobs, API | ✅ completo |
+| **Fase 2 / Sprint 8** — Cascada de enriquecimiento: ATS públicas (Greenhouse, Lever, Ashby), JSON-LD, `POST /capture` | 🟡 siguiente |
+| Fase 2 / Sprint 9 — Embudo de matching (Capa 0 Dedup, Capa 1 Reglas, Capa 2 Embeddings, Capa 3 LLM) | ⬜ |
 | Fase 3 — Postulación + Tracking · Fase 4 — Aprendizaje | ⬜ |
 
-- **Tests:** 128 verdes (core 18 · llm 37 · documents 25 · api 48).
+- **Tests:** 177 verdes (core 21 · llm 37 · documents 25 · sources 38 · api 56).
 - **Deuda del `jsonb` saldada** (ADR-0024): ya se puede consultar JSON desde SQL,
   que es lo que necesita la Capa 1 del embudo.
 - **Refinamiento de producto resuelto**: `Experience` es ahora un contenedor
@@ -903,3 +904,48 @@ incluido el caso en que una captura posterior resuelve una cascada ya fallida.
 ---
 
 ### 🚀 Sesión 10 = **Fase 2 empezada** (diseño cerrado + contratos en su sitio)
+
+---
+
+## 📅 SESIÓN 11 — Fase 2 / Sprint 7: Ingesta y descubrimiento de vacantes delgadas vía Email ✅ COMPLETADO
+
+**Fecha:** 2026-10-18
+
+### ✅ COMPLETADO
+
+**Objetivo:** Implementar de punta a punta la etapa de descubrimiento de vacantes delgadas desde correos de alerta (LinkedIn y Glassdoor) según el diseño de dos tiempos ([ADR-0029](./adr/0029-ingesta-en-dos-tiempos-descubrir-y-enriquecer.md)).
+
+#### ✅ 1. Parsers deterministas por remitente
+- **`LinkedInJobParser`**: Parseo puro de tarjetas de alerta HTML con extracción de `title`, `company`, `location`, `url` con parámetros tracking preservados, e ID externo. Testeado contra fixture real sanitizado ([`linkedin-job-alert.html`](../packages/sources/tests/fixtures/emails/linkedin-job-alert.html)).
+- **`GlassdoorJobParser`**: Parseo puro de alertas de Glassdoor normalizando ubicación y salario. Testeado contra fixture real sanitizado ([`glassdoor-job-alert.html`](../packages/sources/tests/fixtures/emails/glassdoor-job-alert.html)).
+- **Registro de enrutado (`registry.ts`)**: Mantiene la distinción crucial de 3 estados: `parsed`, `empty` (alerta de remitente conocido que produjo cero vacantes = señal visible de rotura de plantilla, cumpliendo RNF-07), y `unknown-sender`.
+
+#### ✅ 2. Adaptador de lectura de Gmail (`GmailSource`)
+- Implementa `EmailReaderPort` con alcance de solo lectura `gmail.readonly` para que la credencial nunca pueda enviar ni modificar correos.
+- Decodificación recursiva de partes MIME `text/html` en base64url sin dependencias externas pesadas.
+- CLI helper `scripts/google-auth.js` para autorizar localmente y obtener el `refresh_token` offline.
+
+#### ✅ 3. Caso de uso `IngestJobs` y adaptador `EmailAlertSource`
+- **`IngestJobs`** (`@jobfinder/core`): Orquesta descubrimiento y deduplicación por hash (`Job.generateDedupHash`). Define el puerto desacoplado `JobStore` satisfecho por `JobRepository` de `@jobfinder/db`.
+- **`EmailAlertSource`** (`@jobfinder/sources`): Combina cualquier `EmailReaderPort` con la lista de parsers para implementar `JobSourcePort`.
+
+#### ✅ 4. Cableado HTTP en la API (`JobsModule`)
+- `JobsController` en `apps/api`:
+  - `POST /jobs/ingest/email`: Dispara la ingesta, controla la presencia de credenciales de Gmail y retorna `IngestReport`.
+  - `GET /jobs`: Consulta vacantes recientes persistidas en Postgres.
+  - `GET /jobs/:id`: Detalle por ID con manejo de `NotFoundError`.
+- `InfraModule` registra `JobRepository` e `IngestJobs` como factory providers.
+
+### Tests
+
+**177 verdes** (core 21 · llm 37 · documents 25 · sources 38 · api 56), desde los 128 de la sesión 10. `pnpm type-check` con 0 errores en todo el monorepo.
+
+### ⏳ Lo que NO entra en esta sesión
+
+- La cascada de enriquecimiento (Sprint 8): ATS públicas (Greenhouse, Lever, Ashby), JSON-LD y `POST /capture`.
+- El embudo de matching (Sprint 9): Capa 1 de reglas, Capa 2 embeddings con pgvector, Capa 3 scoring con LLM.
+
+---
+
+### 🚀 Sesión 11 = **Sprint 7 COMPLETADO** · Descubrimiento por email listo y cableado a la API
+
