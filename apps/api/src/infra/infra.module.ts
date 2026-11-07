@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { db, ProfileRepository, BulletRepository, ExperienceRepository } from '@jobfinder/db';
+import { db, ProfileRepository, BulletRepository, ExperienceRepository, JobRepository } from '@jobfinder/db';
 import { DocumentAdapter } from '@jobfinder/documents';
-import { TailorDocuments } from '@jobfinder/core';
+import { TailorDocuments, IngestJobs } from '@jobfinder/core';
 import { createLazyLlm } from './lazy-llm';
 import { createFakeLlm } from './fake-llm';
 
@@ -28,6 +28,7 @@ import { createFakeLlm } from './fake-llm';
     { provide: ProfileRepository, useFactory: () => new ProfileRepository(db) },
     { provide: BulletRepository, useFactory: () => new BulletRepository(db) },
     { provide: ExperienceRepository, useFactory: () => new ExperienceRepository(db) },
+    { provide: JobRepository, useFactory: () => new JobRepository(db) },
     { provide: DocumentAdapter, useFactory: () => new DocumentAdapter() },
     {
       provide: TailorDocuments,
@@ -46,7 +47,19 @@ import { createFakeLlm } from './fake-llm';
         ),
       inject: [ProfileRepository, BulletRepository, ExperienceRepository, DocumentAdapter],
     },
+    {
+      provide: IngestJobs,
+      useFactory: (jobs: JobRepository) => new IngestJobs(jobs),
+      inject: [JobRepository],
+    },
   ],
-  exports: [ProfileRepository, BulletRepository, ExperienceRepository, TailorDocuments],
+  exports: [
+    ProfileRepository,
+    BulletRepository,
+    ExperienceRepository,
+    JobRepository,
+    TailorDocuments,
+    IngestJobs,
+  ],
 })
 export class InfraModule {}
