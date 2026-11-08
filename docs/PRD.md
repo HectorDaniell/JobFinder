@@ -66,11 +66,17 @@ Tres consecuencias de diseño que atraviesan todo el producto:
 - **Bucle de aprendizaje** que correlaciona resultados con features.
 
 ### Fuera de alcance (explícito)
-- ❌ Scraping de LinkedIn/Indeed o cualquier sitio que lo prohíba en sus ToS.
+- ❌ Scraping de LinkedIn/Indeed/Glassdoor o cualquier sitio que lo prohíba en sus ToS —
+  **incluido consumirlo indirectamente** vía APIs de pago que revenden datos scrapeados.
 - ❌ Auto-submit en "Easy Apply" / formularios que violen ToS (riesgo de baneo).
 - ❌ Autorelleno por automatización de navegador (Playwright) como canal de envío.
 - ❌ Inventar experiencia, títulos o métricas en CV/carta.
 - ❌ Multi-tenant / SaaS público (se deja preparado, no se construye ahora).
+
+> **Aclaración sobre RF-07c.** La captura asistida **no** es automatización de navegador:
+> el usuario actúa sobre una página que ya tenía abierta y la máquina solo recibe. La
+> frontera —una vacante a la vez, sin navegación automática, sin lotes— es una restricción
+> del diseño, no una recomendación. Ver ADR-0029.
 
 ## 6. Requisitos funcionales (RF)
 
@@ -82,10 +88,27 @@ Tres consecuencias de diseño que atraviesan todo el producto:
 - **RF-04** El usuario importa el CV existente (Google Docs/Drive o archivo) para poblar el perfil.
 
 ### Módulo: Ingesta
+
+> La ingesta ocurre en **dos tiempos**: *descubrir* que una vacante existe y
+> *enriquecerla* con su descripción completa. Los correos de alertas solo sirven
+> para lo primero: son notificaciones (tarjeta + enlace), no vacantes. Ver
+> **ADR-0029**.
+
 - **RF-05** El sistema lee, vía Gmail API (OAuth), los correos de alertas de empleo.
-- **RF-06** El sistema extrae vacantes de los correos (título, empresa, enlace, descripción, etc.),
-  con extracción robusta (LLM) tolerante a cambios de formato por remitente.
-- **RF-07** El sistema consulta **APIs oficiales** de bolsas configuradas y trae vacantes.
+- **RF-06** El sistema extrae de cada correo una vacante **delgada** (título, empresa,
+  ubicación, enlace) mediante un **parser determinista por remitente**. El LLM actúa solo
+  como **respaldo** cuando el parser falla o el remitente es desconocido; su salida sirve
+  entonces de especificación para el siguiente parser determinista.
+- **RF-07** El sistema consulta **APIs oficiales** de bolsas de empleo configuradas
+  (descubrimiento; algunas ya devuelven la descripción completa) y **ATS públicas** de
+  empresas (solo enriquecimiento: no admiten búsqueda, exigen conocer la empresa).
+- **RF-07b** El sistema **enriquece** una vacante delgada mediante una cascada que degrada:
+  (1) descripción ya incluida, (2) ATS pública de la empresa, (3) `JobPosting` en JSON-LD de
+  la web de la empresa, (4) captura asistida. El enriquecimiento se ejecuta **después de la
+  Capa 1** del embudo, nunca antes, para no gastar peticiones en vacantes ya descartadas.
+- **RF-07c** El usuario puede **capturar** la descripción de una vacante desde la página que
+  ya está viendo en su navegador y enviarla al sistema. La captura es **iniciada por el
+  usuario, de una vacante a la vez, sin navegación automática ni lotes**.
 - **RF-08** La ingesta corre de forma **programada** (p. ej. diaria) y bajo demanda.
 
 ### Módulo: Normalización
@@ -151,13 +174,16 @@ Tres consecuencias de diseño que atraviesan todo el producto:
 | D2 | Automatización de envío | **Email + APIs oficiales** | Auto solo en canales legítimos; resto asistido. Cero baneos. |
 | D3 | Stack | **Node + TypeScript** | Monorepo TS, NestJS, Drizzle/Postgres, BullMQ, Claude. |
 | D4 | Arranque | **Doc de arquitectura primero** | Diseño end-to-end antes de codear. |
+| D5 | Ingesta | **Descubrir ≠ enriquecer** | El correo descubre (con el matching que LinkedIn/Glassdoor ya hacen); el JD se obtiene aparte, por cascada, y solo tras la Capa 1. ADR-0029. |
 
 ## 9. Riesgos de producto y mitigaciones
 
 | Riesgo | Impacto | Mitigación |
 |---|---|---|
 | Términos de APIs cambian | Rotura de fuentes | Adapters aislados + verificación de términos al integrar. |
-| Parsing de correos frágil | Vacantes perdidas | Extracción con LLM + validación Zod + pruebas por remitente. |
+| Parsing de correos frágil | Vacantes perdidas | Parser determinista por remitente + respaldo con LLM + validación Zod + pruebas con correos de fixture. Cuando el parser se rompe, la alerta lo vuelve visible. |
+| Baja tasa de acierto del enriquecimiento por ATS | Más carga manual sobre el usuario | La cascada degrada hasta la captura asistida (nunca se pierde la vacante) y se **instrumenta qué paso resolvió cada una**, para decidir con datos y no con supuestos. ADR-0029. |
+| Endpoint de captura expuesto a orígenes arbitrarios | Escritura de datos basura; XSS almacenado si se confía en el HTML | Alcance mínimo del token, `Host` validado, escucha solo en loopback, JD guardado como texto. Al desplegar cambia la arquitectura (popup same-origin o extensión), no la configuración de CORS. ADR-0029. |
 | Cobertura de envío por API limitada | Menos auto-postulación | Modo asistido como fallback de primera clase. |
 | Costo LLM | Gasto inesperado | Embudo + modelos por nivel + caché + presupuesto con corte. |
 | Sobreadaptación / keyword stuffing | Suena artificial | Guardrails de tono + revisión humana opcional. |
@@ -175,10 +201,12 @@ Tres consecuencias de diseño que atraviesan todo el producto:
   ambos formatos, sin inventar datos.
 
 ### Fase 2 — Ingesta + Normalización + Matching
-- Conexión Gmail + 1–2 APIs de bolsas.
-- Normalización + dedup + embudo (reglas → embeddings → LLM).
+- Conexión Gmail + parsers deterministas por remitente + ATS públicas para enriquecer.
+- Normalización + dedup + embudo (reglas → **enriquecimiento** → embeddings → LLM).
+- Captura asistida como último escalón de la cascada.
 - Bandeja priorizada de vacantes.
-- **Criterio**: tras la ingesta diaria, el usuario ve un ranking con score y justificación.
+- **Criterio**: tras la ingesta diaria, el usuario ve un ranking con score y justificación,
+  y ninguna vacante descubierta se pierde por no haberse podido enriquecer sola.
 
 ### Fase 3 — Postulación asistida + Tracking + Analítica
 - Borradores de correo / postulación por API / paquetes asistidos.

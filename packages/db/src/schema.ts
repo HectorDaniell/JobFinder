@@ -3,11 +3,13 @@ import {
   uuid,
   text,
   timestamp,
-  jsonb,
   index,
   uniqueIndex,
-  foreignKey,
+  boolean,
 } from 'drizzle-orm/pg-core';
+// `jsonb` propio, NO el de drizzle-orm: el de serie guarda el JSON como cadena
+// y lo vuelve inconsultable desde SQL. Ver columns.ts y ADR-0024.
+import { jsonb } from './columns';
 
 /**
  * Database schema for JobFinder.
@@ -28,6 +30,32 @@ export const profile = pgTable('profile', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// ============ Experience (a container: a job, a project, or a degree —
+// gives bullets their context. See ADR-0026/0028 and core's Experience.ts) ============
+export const experience = pgTable(
+  'experience',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profile.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(), // 'job' | 'project' | 'education'
+    // Reinterpreted per kind: employer / project context / institution.
+    organization: text('organization').notNull(),
+    // Reinterpreted per kind: role / project name / degree.
+    title: text('title').notNull(),
+    location: text('location'),
+    url: text('url'), // only meaningful for kind='project'
+    startDate: timestamp('start_date').notNull(),
+    endDate: timestamp('end_date'), // null = still ongoing
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    profileIdIdx: index('experience_profile_id_idx').on(table.profileId),
+  })
+);
+
 // ============ Bullet (resume bullets/achievements) ============
 export const bullet = pgTable(
   'bullet',
@@ -36,11 +64,17 @@ export const bullet = pgTable(
     profileId: uuid('profile_id')
       .notNull()
       .references(() => profile.id, { onDelete: 'cascade' }),
+    // NOT NULL: every bullet belongs to a container (job, project or degree) —
+    // there is no "loose" bullet anymore, so CASCADE is the only consistent
+    // choice: a bullet without its container has nothing left to mean. The web
+    // warns the user before deleting a container that still has bullets.
+    experienceId: uuid('experience_id')
+      .notNull()
+      .references(() => experience.id, { onDelete: 'cascade' }),
     textEs: text('text_es').notNull(),
     textEn: text('text_en').notNull(),
     skills: text('skills').array(), // Array of skill tags
-    category: text('category').notNull(), // 'experience' | 'achievement' | 'project' | 'education'
-    sourceRole: text('source_role'),
+    category: text('category').notNull(), // 'experience' | 'achievement'
     metrics: jsonb('metrics'), // { metric_name: value }
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -74,12 +108,20 @@ export const job = pgTable(
     location: text('location'),
     modality: text('modality').default('unknown'), // 'remote' | 'hybrid' | 'onsite'
     seniority: text('seniority').default('unknown'), // 'junior' | 'mid' | 'senior' | 'lead'
-    description: text('description').notNull(),
+    // Nullable: a job discovered from an alert email arrives THIN (no
+    // description). Enrichment is a separate stage that runs after funnel
+    // layer 1. See ADR-0029 and core's Job entity.
+    description: text('description'),
     url: text('url').notNull(),
     postedAt: timestamp('posted_at'),
     salary: jsonb('salary'), // { min?, max?, currency? }
     raw: jsonb('raw'), // Raw data from source
     dedupHash: text('dedup_hash').notNull(), // For identifying duplicates
+    // The enrichment cascade ran to exhaustion and resolved nothing. Stored
+    // because "never tried" and "tried and failed" both look like a missing
+    // description; without it, dead ends get retried on every scheduled run.
+    enrichmentFailed: boolean('enrichment_failed').default(false).notNull(),
+    enrichedBy: text('enriched_by'), // which cascade step won, for the hit rate
     ingestedAt: timestamp('ingested_at').defaultNow().notNull(),
   },
   (table) => ({

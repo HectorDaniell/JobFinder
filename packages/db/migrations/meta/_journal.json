@@ -1,0 +1,41 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1782281277868,
+      "tag": "0000_fat_toad_men",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1785801600000,
+      "tag": "0001_add_experience",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1785974400000,
+      "tag": "0002_fix_jsonb_double_encoding",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1786162314113,
+      "tag": "0003_experience_as_container",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1786248714113,
+      "tag": "0004_thin_jobs",
+      "breakpoints": true
+    }
+  ]
+}

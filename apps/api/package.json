@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
+    "type-check": "tsc --noEmit",
     "start": "node dist/main.js",
     "lint": "eslint src",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@jobfinder/core": "workspace:*",
@@ -24,10 +26,12 @@
     "bull": "^4.11.0",
     "redis": "^4.6.0",
     "reflect-metadata": "^0.1.0",
-    "rxjs": "^7.8.0"
+    "rxjs": "^7.8.0",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.2.0",
+    "@nestjs/testing": "^10.2.0",
     "@types/express": "^4.17.0",
     "typescript": "^5.3.0"
   }

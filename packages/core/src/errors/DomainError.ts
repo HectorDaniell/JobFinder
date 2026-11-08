@@ -11,7 +11,10 @@ export class DomainError extends Error {
     super(message);
     this.code = code;
     this.statusCode = statusCode;
-    Object.setPrototypeOf(this, DomainError.prototype);
+    // `new.target.prototype` = el prototipo de la clase REALMENTE instanciada
+    // (NotFoundError, ValidationError, …). Con `DomainError.prototype` fijo,
+    // `instanceof <subclase>` daba false. Ver TailorDocuments.test.ts.
+    Object.setPrototypeOf(this, new.target.prototype);
   }
 }
 

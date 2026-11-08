@@ -9,6 +9,7 @@
     "migrate": "node scripts/migrate.js",
     "push": "drizzle-kit push:pg",
     "studio": "drizzle-kit studio",
+    "seed": "tsx scripts/seed.ts",
     "build": "tsc",
     "clean": "rm -rf dist"
   },

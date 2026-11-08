@@ -1,7 +1,11 @@
 # JobFinder — Arquitectura Técnica
 
-> Estado: **Diseño** · Versión 0.1 · Fecha 2026-06-22
-> Documento de producto: [PRD.md](./PRD.md) · Diagrama de flujo punto a punto: compartido en el chat.
+> Estado: **Vigente** · Versión 0.2 · Actualizado 2026-08-23
+> Documento de producto: [PRD.md](./PRD.md) · Recorrido end-to-end: [FLUJO.md](./FLUJO.md)
+>
+> Este documento describe el diseño **vigente**, no el original. Donde lo construido
+> se desvió del plan de junio, manda lo construido y se cita el ADR que lo decidió.
+> Lo que aún no existe va marcado con ⬜ para que no se confunda un plan con un hecho.
 
 ---
 
@@ -72,10 +76,10 @@ humana → Postulación → Tracking → Aprendizaje** (que retroalimenta el mat
 | Embeddings | **Voyage AI** (recomendación de Anthropic) | Anthropic no expone embeddings propios. Alternativas: OpenAI `text-embedding-3`, o **local** (`fastembed`/Transformers.js con bge/e5) para coste cero. |
 | Email | **googleapis** (Gmail API) + OAuth2 | Cliente oficial; lectura de alertas y creación de borradores. |
 | Docs/Drive | **googleapis** (Docs + Drive API) | Importar/leer el CV existente. |
-| Documentos CV | **`docx`** (DOCX) + **Puppeteer** (HTML→PDF) | Texto seleccionable, ATS-friendly; control total de plantilla. |
+| Documentos CV | **`docx`** (DOCX) + **`pdfkit`** (PDF) | Texto seleccionable, ATS-friendly. Se eligió `pdfkit` sobre Puppeteer para no arrastrar Chromium (ADR-0014); ambos formatos parten del mismo modelo intermedio (ADR-0015), sin plantillas HTML. |
 | Frontend | **Next.js (App Router)** + Tailwind | UI simple; comparte tipos del monorepo. |
 | Logging | **pino** | Logs estructurados de alto rendimiento. |
-| Tests | **Vitest** (+ Supertest) | Rápido, TS nativo. |
+| Tests | **Vitest** (+ `app.inject()` de Fastify) | Rápido, TS nativo. Los e2e de la API usan el `inject` nativo de Fastify, no Supertest: levanta el contenedor real de Nest sin abrir un puerto. |
 | Calidad | **ESLint + Prettier + tsconfig strict** | Consistencia y seguridad de tipos. |
 | Empaquetado | **Docker + docker-compose** | Postgres+pgvector, Redis y apps reproducibles. |
 
@@ -85,18 +89,16 @@ humana → Postulación → Tracking → Aprendizaje** (que retroalimenta el mat
 jobfinder/
 ├─ apps/
 │  ├─ api/            # NestJS: REST + orquestación de casos de uso
-│  ├─ worker/         # NestJS standalone + BullMQ processors
-│  └─ web/            # Next.js: config, bandeja, revisión, dashboards
+│  ├─ worker/     ⬜  # NestJS standalone + BullMQ. Solo esqueleto (main + app.module)
+│  └─ web/            # Next.js: perfil, historial, bullets, tailor. Bandeja/dashboards ⬜
 ├─ packages/
 │  ├─ core/           # DOMINIO: entidades, value objects, PUERTOS, casos de uso (sin infra)
-│  ├─ db/             # Drizzle: schema, migraciones, repositorios (impl. de puertos)
-│  ├─ sources/        # Adapters de fuentes: gmail, getonboard, remotive, adzuna...
-│  ├─ llm/            # Adapter Claude + prompts + guardrails + embeddings (Voyage/local)
-│  ├─ documents/      # Generación CV/carta: plantillas ATS, docx, html→pdf
-│  └─ shared/         # Tipos + esquemas Zod + utilidades compartidas
-├─ docs/
-│  ├─ PRD.md
-│  └─ ARQUITECTURA.md
+│  ├─ db/             # Drizzle: schema, migraciones, repositorios
+│  ├─ sources/    ⬜  # Adapters de fuentes: gmail, bolsas, ATS. VACÍO hoy
+│  ├─ llm/            # Adapter Claude + prompts + guardrails. Embeddings ⬜
+│  ├─ documents/      # Generación CV/carta: modelo intermedio → docx / pdfkit
+│  └─ shared/     ⬜  # Utilidades compartidas. VACÍO hoy
+├─ docs/              # PRD · ARQUITECTURA · ROADMAP · PROGRESS · FLUJO · SETUP · adr/
 ├─ docker-compose.yml
 ├─ pnpm-workspace.yaml
 └─ package.json
@@ -105,77 +107,99 @@ jobfinder/
 ## 6. Diseño del dominio (puertos)
 
 El core define **entidades** y **puertos** (interfaces). La infraestructura los implementa.
+Lo de abajo son los puertos **que existen hoy** en `packages/core/src/ports/`, con su
+firma real. Los planificados van aparte, al final, para no confundirlos con lo construido.
 
 ```ts
-// packages/core/ports.ts  (ilustrativo)
+// La ingesta son DOS puertos, no uno: descubrir ≠ enriquecer (ADR-0029).
 
-export interface JobSourcePort {
+export interface JobSourcePort {          // DESCUBRIR: ¿qué vacantes existen?
   readonly name: string;
   readonly kind: 'email' | 'api' | 'rss';
-  fetch(since: Date): Promise<RawJob[]>;   // trae vacantes crudas
+  fetch(since: Date): Promise<RawJob[]>;  // RawJob.description es OPCIONAL
+  test(): Promise<{ ok: boolean; error?: string }>;
 }
 
+export interface JobEnricherPort {        // ENRIQUECER: ¿qué dice esa vacante?
+  readonly name: string;                  // qué paso de la cascada resolvió: se mide
+  enrich(job: Job): Promise<EnrichmentResult | null>;  // null = "no es mía"
+}
+
+// SOLO LECTURA, y es una decisión de seguridad, no una omisión: el camino de
+// ingesta nunca debe sostener una credencial capaz de enviar correo. Cuando la
+// Fase 3 necesite crear borradores, será OTRO puerto con OTRO scope de OAuth.
 export interface EmailReaderPort {
   search(query: string, since: Date): Promise<EmailMessage[]>;
-  createDraft(draft: OutgoingEmail): Promise<{ id: string }>;
-  send?(draft: OutgoingEmail): Promise<{ id: string }>;   // opcional, opt-in
+  test(): Promise<{ ok: boolean; error?: string }>;
 }
 
 export interface LlmPort {
-  extractJobs(emailBody: string): Promise<RawJob[]>;       // parsing robusto
-  scoreJob(job: Job, profile: Profile): Promise<JobScore>; // capa 3 del embudo
+  extractJobs(rawText: string): Promise<ExtractedJob[]>;    // ⬜ stub
+  scoreJob(job: Job, profile: Profile): Promise<JobScore>;  // ⬜ stub
   tailorCv(job: Job, profile: Profile, lang: Lang): Promise<TailoredCv>;
   tailorCoverLetter(job: Job, profile: Profile, lang: Lang): Promise<string>;
 }
 
-export interface EmbedderPort {
+export interface EmbedderPort {           // ⬜ sin adapter todavía (Capa 2)
   embed(texts: string[]): Promise<number[][]>;
+  embedOne(text: string): Promise<number[]>;
+  similarity(vecA: number[], vecB: number[]): number;
 }
 
-export interface JobRepository {
-  upsert(job: Job): Promise<void>;
-  findCandidates(filter: HardFilter): Promise<Job[]>;
-  nearest(profileEmbedding: number[], limit: number): Promise<Job[]>; // pgvector
-}
-
-export interface DocumentGenerator {
-  toPdf(doc: ResumeDoc | CoverDoc): Promise<Buffer>;
-  toDocx(doc: ResumeDoc | CoverDoc): Promise<Buffer>;
-}
-
-export interface SubmitterPort {
-  readonly channel: 'email' | 'greenhouse' | 'lever' | 'assisted';
-  canHandle(job: Job): boolean;
-  submit(pkg: ApplicationPackage): Promise<SubmissionResult>;
+export interface DocumentPort {
+  generateCv(cv, profile, experiences, lang, format): Promise<DocumentArtifact>;
+  generateCoverLetter(letter, profile, lang, format): Promise<DocumentArtifact>;
 }
 ```
 
-**Casos de uso** (en `core`, orquestados por `apps/api` y `apps/worker`):
-`IngestJobs` · `NormalizeAndDedup` · `ScoreJobs` · `TailorDocuments` ·
-`PrepareApplicationPackage` · `SubmitApplication` · `TrackOutcome` · `LearnFromOutcomes`.
+**Los repositorios no son puertos del core.** `packages/db` expone clases concretas
+(`ProfileRepository`, `JobRepository`…) y quien las necesita declara **su propia
+interfaz mínima**, definida por el consumidor: `TailorDocuments` pide un
+`ProfileProvider { findById }`, no un repositorio entero. Así el core no arrastra
+métodos que no usa y los tests se doblan con tres líneas. Ver ADR-0011.
+
+**Puertos planificados** (aún sin escribir): `SubmitterPort` (canal de postulación,
+Fase 3).
+
+**Casos de uso.** Solo `TailorDocuments` existe. Los demás son plan:
+⬜ `IngestJobs` · ⬜ `EnrichJob` · ⬜ `NormalizeAndDedup` · ⬜ `ScoreJobs` ·
+✅ `TailorDocuments` · ⬜ `PrepareApplicationPackage` · ⬜ `SubmitApplication` ·
+⬜ `TrackOutcome` · ⬜ `LearnFromOutcomes`.
 
 ## 7. Diseño por etapa
 
-| # | Etapa | Puerto(s) | Adapter(s) | Entrada → Salida |
-|---|---|---|---|---|
-| 1 | Fuentes | `JobSourcePort` | `GmailSource`, `GetOnBoardSource`, `RemotiveSource`, `AdzunaSource` | config → `RawJob[]` |
-| 2 | Ingesta + Normalización | `LlmPort`, `JobRepository` | `ClaudeLlm`, `DrizzleJobRepository` | `RawJob[]` → `Job` normalizado + dedup |
-| 3 | Matching (embudo) | `JobRepository`, `EmbedderPort`, `LlmPort` | `Voyage/LocalEmbedder`, `ClaudeLlm` | `Job[]` → `JobScore[]` (apply/maybe/skip) |
-| 4 | Tailoring | `LlmPort`, `DocumentGenerator` | `ClaudeLlm`, `DocxGenerator`, `PdfGenerator` | `Job` + `Profile` → CV/carta ES/EN |
-| 5 | Revisión humana | (UI) | `apps/web` | paquete → aprobado / editado |
-| 6 | Postulación | `SubmitterPort` | `EmailSubmitter`, `GreenhouseSubmitter`, `AssistedSubmitter` | paquete → `SubmissionResult` |
-| 7 | Tracking + Aprendizaje | `JobRepository`, `EmailReaderPort` | `DrizzleRepo`, `GmailSource` | eventos → métricas + sugerencias |
+| # | Etapa | Puerto(s) | Adapter(s) | Entrada → Salida | Estado |
+|---|---|---|---|---|---|
+| 1 | Descubrimiento | `JobSourcePort`, `EmailReaderPort` | `GmailSource`, `RemotiveSource`, `AdzunaSource` | config → `RawJob[]` **delgados** | ⬜ |
+| 2 | Normalización + dedup | (repos de `db`) | `JobRepository` | `RawJob[]` → `Job` normalizado, deduplicado | ⬜ |
+| 3 | Matching · Capa 1 (reglas) | (repos de `db`) | `JobRepository` | `Job[]` → los que cumplen preferencias duras | ⬜ |
+| 4 | **Enriquecimiento** | `JobEnricherPort` | `AtsEnricher`, `JsonLdEnricher`, `CaptureEnricher` | `Job` delgado → `Job` con descripción | ⬜ |
+| 5 | Matching · Capas 2–3 | `EmbedderPort`, `LlmPort` | `Voyage/LocalEmbedder`, `ClaudeAdapter` | `Job[]` → `JobScore[]` (apply/maybe/skip) | ⬜ |
+| 6 | Tailoring | `LlmPort`, `DocumentPort` | `ClaudeAdapter`, `DocumentAdapter` | `Job` + `Profile` → CV/carta ES/EN | ✅ |
+| 7 | Revisión humana | (UI) | `apps/web` | paquete → aprobado / editado | ✅ |
+| 8 | Postulación | `SubmitterPort` | `EmailSubmitter`, `AtsApiSubmitter`, `AssistedSubmitter` | paquete → `SubmissionResult` | ⬜ |
+| 9 | Tracking + Aprendizaje | (repos), `EmailReaderPort` | `DrizzleRepo`, `GmailSource` | eventos → métricas + sugerencias | ⬜ |
+
+El enriquecimiento (4) va **entre** la Capa 1 y la Capa 2 a propósito: es la decisión
+que contiene el costo de la Fase 2. Ver §8 y ADR-0029.
 
 ## 8. El embudo híbrido por capas (matching)
 
 Materializa la decisión **D1**: filtrar masivo barato, adaptar caro solo el top.
 
 ```
-N vacantes (cientos/día)
-   │  Capa 1 — REGLAS (coste 0)
+N vacantes DELGADAS (cientos/día)
+   │  Capa 0 — DEDUP (coste 0)
+   │  la misma vacante vista en tres fuentes colapsa a una
+   ▼
+   │  Capa 1 — REGLAS (coste 0, solo metadatos)
    │  ubicación, modalidad, seniority, idioma, salario, deal-breakers
    ▼
 ~decenas
+   │  ENRIQUECIMIENTO — cascada que degrada (ADR-0029)
+   │  ① ya venía completa · ② ATS pública · ③ JSON-LD de la empresa 🟡 · ④ captura asistida
+   ▼
+~decenas, ya con su descripción
    │  Capa 2 — EMBEDDINGS (coste muy bajo)
    │  similitud coseno perfil↔vacante (pgvector) → top N (p.ej. 20)
    ▼
@@ -190,28 +214,38 @@ top N
 Paquetes listos para revisión humana
 ```
 
+**Por qué el enriquecimiento va ahí y no antes.** La Capa 1 solo mira metadatos
+(ubicación, modalidad, salario), que el correo de alerta **sí trae**. No necesita el
+texto de la oferta. Enriquecer antes de filtrar sería pagar peticiones —y, en los
+pasos ③–④, tokens— por vacantes que se iban a descartar de todos modos. Colocarlo
+después convierte "cientos de peticiones" en "unas pocas decenas".
+
 El "embedding de perfil" se construye a partir del resumen + bullets más representativos (o un
-promedio ponderado de embeddings de bullets). Los embeddings de vacantes se calculan en ingesta y
-se guardan en `pgvector` con índice HNSW.
+promedio ponderado de embeddings de bullets). Los embeddings de vacantes se calculan **tras el
+enriquecimiento** (sin descripción no hay nada que embeber) y se guardan en `pgvector` con
+índice HNSW. ⬜ pgvector todavía no está habilitado: la columna `embedding` no existe aún.
 
 ## 9. Modelo de datos
 
-Esquema relacional en Postgres (Drizzle). Vectores en columnas `vector` (pgvector).
+Esquema relacional en Postgres (Drizzle). **10 tablas existentes**, tal como están en
+`packages/db/src/schema.ts` (migraciones `0000`–`0004`):
 
 ```
 profile           (1)  id, full_name, email, phone, links(jsonb),
                        summary_es, summary_en, preferences(jsonb), updated_at
-bullet            (N)  id, profile_id→profile, text_es, text_en, skills(text[]),
-                       category, metrics(jsonb), source_role, embedding vector
+experience        (N)  id, profile_id→profile, kind(job|project|education),
+                       organization, title, location, url, start_date, end_date
+bullet            (N)  id, profile_id→profile, experience_id→experience (NOT NULL,
+                       cascade), text_es, text_en, skills(text[]),
+                       category(experience|achievement), metrics(jsonb)
 source            (N)  id, name, kind(email|api|rss), config(jsonb), enabled
-email_message     (N)  id, gmail_id, from_addr, subject, received_at, parsed(jsonb)
 job               (N)  id, source_id→source, external_id, title, company, location,
-                       modality, seniority, description, url, salary(jsonb),
-                       posted_at, raw(jsonb), dedup_hash, embedding vector,
-                       status, ingested_at
+                       modality, seniority, description (NULLABLE), url, salary(jsonb),
+                       posted_at, raw(jsonb), dedup_hash (UNIQUE),
+                       enrichment_failed(bool), enriched_by, ingested_at
 job_score         (N)  id, job_id→job, layer(rules|embedding|llm), score,
-                       reasons(jsonb), missing_keywords(text[]),
-                       decision(apply|maybe|skip), model, created_at
+                       decision(apply|maybe|skip), reasoning, missing_keywords(text[]),
+                       gap_analysis, model, created_at
 document          (N)  id, job_id→job, type(cv|cover), lang(es|en),
                        content(jsonb), file_path, version, created_at
 application       (N)  id, job_id→job, channel(email|greenhouse|lever|assisted),
@@ -221,20 +255,52 @@ application_event (N)  id, application_id→application, type, payload(jsonb), o
 llm_usage         (N)  id, op, model, input_tokens, output_tokens, cost_estimate, created_at
 ```
 
+**Tablas planificadas, aún sin crear** (⬜ Fase 2/3):
+
+```
+email_message     (N)  id, gmail_id, from_addr, subject, received_at, parsed(jsonb)
+company_ats       (N)  id, company, provider(greenhouse|lever|ashby|…), board_token
+job_source_link   (N)  id, job_id→job, source_id→source, url   ← una vacante, varias URLs
+```
+
+`company_ats` es el activo que **compone**: resuelta una empresa una vez, todas sus
+vacantes futuras se enriquecen gratis (ADR-0029).
+
+> **Columnas `vector` (pgvector): todavía no existen.** Ni `bullet.embedding` ni
+> `job.embedding`. Se añaden cuando se implemente la Capa 2; hasta entonces
+> `EmbedderPort` no tiene adapter y el diseño vectorial es plan, no hecho.
+
+> **`document` existe como tabla pero nadie escribe en ella.** Persistir los archivos
+> generados (`DocumentRepository`) está diferido a la Fase 3. Lo mismo con `llm_usage`:
+> la tabla está, pero el `usageSink` del `CostLogger` no está cableado a ningún
+> repositorio, así que el KPI de coste por tailor **no se puede medir hoy**.
+
+**`experience` como contenedor**: `organization`/`title` se reinterpretan según `kind`
+(empresa/rol, contexto/proyecto, institución/título) en vez de columnas específicas por
+tipo — job/project/education comparten toda propiedad relevante. Todo `bullet` pertenece
+a un `experience`; no existe el bullet suelto (ADR-0028).
+
 **Estados de `application`**: `prepared → submitted → acknowledged → (rejected | interview →
 offer | ghosted)`. Cada transición es un `application_event` (línea de tiempo + analítica).
 
 **Dedup (`dedup_hash`)**: hash normalizado de `(empresa + título + ubicación)` con limpieza de
 texto; las vacantes equivalentes de distintas fuentes colapsan a una, conservando todas las URLs.
 
+> ⬜ **Hoy es un placeholder.** `Job.generateDedupHash` normaliza y concatena, pero
+> **no hashea** (su propio comentario lo dice: *"in production, use crypto.createHash"*).
+> Funciona como clave única, pero mete el texto entero en un índice UNIQUE. Conservar
+> todas las URLs necesita además `job_source_link`, que no existe. Ambos son trabajo de
+> la Fase 2, cuando el dedup deje de ser teórico porque haya varias fuentes reales.
+
 ## 10. Integraciones externas
 
 | Servicio | Uso | Auth | Notas |
 |---|---|---|---|
-| **Gmail API** | Leer alertas, detectar respuestas, crear borradores/enviar | OAuth2 (scopes mínimos: `gmail.readonly`, `gmail.compose`) | Lectura ToS-safe; envío opt-in. |
-| **Google Docs/Drive** | Importar el CV existente ES/EN | OAuth2 (`drive.readonly`/`documents.readonly`) | Para poblar perfil y bullets. |
-| **GetOnBoard / Remotive / Adzuna / Arbeitnow / RemoteOK** | Ingesta de vacantes | API key / pública | APIs oficiales; verificar términos al integrar. |
-| **ATS (Greenhouse / Lever)** | Ingesta y, donde exista, **postulación por API** | Token por empresa | Postulación por API solo donde el ATS lo expone; si no, modo asistido. |
+| **Gmail API** | **Descubrir**: leer alertas. Fase 3: detectar respuestas | OAuth2, `gmail.readonly` | La ingesta usa **solo lectura**. El scope `gmail.compose` llega en la Fase 3, con otro puerto — ver §6. |
+| **Google Docs/Drive** | Importar el CV existente ES/EN (RF-04) | OAuth2 (`drive.readonly`/`documents.readonly`) | Para poblar perfil y bullets. ⬜ pendiente desde la Fase 1. |
+| **Bolsas con API** (Remotive, Himalayas, Arbeitnow, Jobicy, RemoteOK, Get on Board) | **Descubrir**, ya con el JD completo | API key / pública | Son buscables *y* traen descripción: no necesitan enriquecimiento. |
+| **Agregadores** (Adzuna) | **Descubrir** solamente | API key | Truncan la descripción **por modelo de negocio** (quieren el clic). Nunca sirven para enriquecer. |
+| **ATS públicas** (Greenhouse, Lever, Ashby, Workable, Recruitee, Personio) | **Enriquecer**. Fase 3: postulación por API donde exista | Sin auth para leer; token por empresa | **No son buscables**: no existe "dame todas las vacantes de Greenhouse", hay que saber ya por qué empresa preguntas. Por eso nunca descubren. ADR-0029. |
 | **Claude (`@anthropic-ai/sdk`)** | Extracción, scoring, tailoring | API key | Modelos por nivel + *prompt caching*. |
 | **Voyage AI** (o local) | Embeddings | API key (o local sin red) | Local-first posible con `fastembed`/Transformers.js. |
 
@@ -246,15 +312,24 @@ cifrado en reposo; renovación automática. Scopes mínimos por principio de men
 
 ## 11. Generación de documentos ATS-friendly
 
-Pipeline: **datos estructurados → plantilla → render**.
+Pipeline: **datos estructurados → modelo intermedio → exporter**. No hay plantillas
+HTML: el plan original (Handlebars → Puppeteer) se descartó al elegir `pdfkit`, y
+`handlebars` se retiró de las dependencias en el Sprint 3.
 
 - **Reglas ATS**: una sola columna, sin tablas/imágenes/iconos, fuentes estándar, encabezados
   convencionales (Experiencia, Educación, Skills), texto **seleccionable** (no imagen).
-- **DOCX**: librería `docx` (algunos ATS prefieren `.docx`).
-- **PDF**: plantilla HTML/Handlebars → **Puppeteer** (headless Chrome) → PDF con texto real.
-- **Guardrails (RF-17)**: el LLM solo **selecciona y reformula** bullets existentes y alinea
-  keywords; un validador comprueba que no aparezcan datos fuera del banco de bullets/perfil.
-- **Versionado**: cada documento guarda `version` → habilita el A/B testing por versión de CV (RF-26).
+- **Modelo intermedio** (`ResumeModel` / `CoverLetterModel`): mappers puros que deciden *qué*
+  va en el documento, una sola vez, con independencia del formato. ADR-0015.
+- **DOCX**: librería `docx` — árbol declarativo → `Packer.toBuffer`.
+- **PDF**: `pdfkit` — stream imperativo → `Buffer.concat`. Sin Chromium. ADR-0014.
+- **Composición en `core`, no en el LLM**: el historial completo, la formación y las
+  habilidades son **hechos** del perfil y los pone `TailorDocuments`; el LLM solo elige y
+  reformula bullets. Ningún contenedor queda mudo (ADR-0026, ADR-0027, ADR-0028).
+- **Guardrails (RF-17)**: el LLM solo **selecciona y reformula** bullets existentes; el
+  validador de origen (coeficiente de **contención**, ADR-0023) comprueba que cada bullet
+  procede del banco, y descarta solo el que falle en vez de tumbar el CV entero (ADR-0025).
+- ⬜ **Versionado**: la columna `document.version` existe, pero **nada persiste documentos
+  todavía**. El A/B testing por versión de CV (RF-26) depende de `DocumentRepository` → Fase 3.
 
 ## 12. Estrategia de postulación (decisión D2)
 
@@ -299,16 +374,40 @@ Tres `SubmitterPort` priorizados por `canHandle(job)`:
 
 ## 16. Testing y calidad
 
-- **Unitarias** (Vitest) del dominio y casos de uso con puertos *mockeados*.
-- **Pruebas por remitente** del parser de correos (fixtures de cada plataforma) → robustez RNF-07.
-- **Contract tests** de cada adapter de fuente contra esquemas Zod.
-- **Integración** de `api` con Supertest; e2e ligeros de la UI con Playwright (solo testing).
-- **Calidad**: ESLint + Prettier + `tsc --noEmit` en CI; `strict: true`.
+**Hoy: 128 tests verdes** — `core` 18 · `llm` 37 · `documents` 25 · `api` 48.
+
+- **Unitarias** (Vitest) del dominio y casos de uso con puertos *doblados* a mano (sin
+  librería de mocks: los puertos son pequeños justamente para eso).
+- **Integración** de `api` con `app.inject()` de Fastify: levanta el contenedor real de
+  Nest sin abrir un puerto. No se usa Supertest.
+- **Calidad**: ESLint + Prettier + `tsc --noEmit`; `strict: true`. `pnpm type-check`
+  cubre `src`, `tests` y `scripts` de los packages, más las tres apps con su propia config.
+
+**Huecos conocidos** (deuda reconocida, no olvidada):
+
+- ⬜ **`packages/db` no tiene ni un test**, ni script `test`. El Sprint 1 dio por
+  entregada una cobertura de repositorios que nunca se escribió. Los repos se ejercitan
+  hoy solo de forma indirecta, a mano contra Postgres.
+- ⬜ **`apps/web` no tiene tests automatizados**. Se verifica con recorridos reales en
+  navegador. Un bug de navegación en móvil ya se escapó por aquí (Sprint 5).
+- ⬜ **Pruebas por remitente** del parser de correos (fixtures por plataforma) → es el
+  primer entregable de la Fase 2 y lo que hará cumplir RNF-07.
+- ⬜ **Contract tests** de cada adapter de fuente contra esquemas Zod.
+- ⚠️ **`pnpm test` en la raíz arranca Vitest en modo *watch*** (el script es `vitest`, sin
+  `run`) y no termina. No hay un comando único que corra la suite completa; hay que ir
+  package por package con `pnpm --filter <pkg> run test`.
 
 ## 17. Despliegue (local-first)
 
-`docker-compose.yml` con: `postgres` (imagen con pgvector), `redis`, `api`, `worker`, `web`.
-Migraciones Drizzle al arrancar. Variables en `.env` (validadas con Zod). Un comando levanta todo.
+**Hoy** `docker-compose.yml` levanta solo la **infraestructura**: `db` (Postgres 16, `:5433`)
+y `redis` (`:6379`). Las tres apps se ejecutan fuera del contenedor, con `pnpm run dev:*`
+(ver [SETUP.md](./SETUP.md)), que es lo cómodo mientras se desarrolla.
+
+Las migraciones **no** corren al arrancar: son un paso explícito (`pnpm run migrate`), y el
+runner registra las aplicadas en `drizzle.__drizzle_migrations`, así que repetirlo no hace daño.
+
+⬜ Empaquetar `api`, `worker` y `web` como servicios del compose queda para cuando el
+worker tenga contenido real (Fase 2).
 
 ## 18. Decisiones de arquitectura (ADRs)
 
@@ -323,10 +422,26 @@ Migraciones Drizzle al arrancar. Variables en `.env` (validadas con Zod). Un com
 | 007 | Documentos **datos→plantilla→PDF/DOCX** ATS | Texto seleccionable, versionable, A/B testeable. |
 | 008 | **Monorepo pnpm** + tipos compartidos | Coherencia de tipos end-to-end. |
 
+Estas ocho son las **fundacionales**, y viven resumidas aquí. Las decisiones posteriores
+tienen archivo propio: **ADR-0009 a ADR-0029**, indexadas en
+[`docs/adr/README.md`](./adr/README.md). Varias de ellas corrigen a este documento —
+`pdfkit` sobre Puppeteer (0014), la ingesta en dos tiempos (0029)— y en cada caso manda
+el ADR, que es posterior.
+
 ## 19. Próximos pasos técnicos
 
-1. Validar/ajustar este documento contigo.
-2. (Opcional) **Diagrama de secuencia** detallado de una fase (p. ej. Fase 1 tailoring).
-3. (Opcional) **Esqueleto del monorepo** (estructura + tsconfig + lint + docker-compose), aún sin
-   lógica de negocio.
-4. Empezar **Fase 1** (Perfil + Adaptación) según el roadmap del PRD.
+La Fase 1 está construida y en uso real. Lo que sigue es la **Fase 2 (ingesta)**, en el
+orden que impone ADR-0029 — primero lo que no necesita credenciales:
+
+1. **Parsers deterministas por remitente** (LinkedIn, Glassdoor) como funciones puras,
+   con fixtures de correos reales saneados. Sin red, sin Gmail, sin LLM.
+2. **Enrichers de ATS** (Greenhouse, Lever, Ashby): verificables contra endpoints
+   públicos reales, sin credenciales.
+3. **`GmailSource`** + OAuth (RF-05), tabla `email_message`, caso de uso `IngestJobs`
+   y un `dedup_hash` de verdad.
+4. **`EnrichJob`**: la cascada completa + caché `company_ats`.
+5. **`POST /capture`** + bookmarklet, con los endurecimientos de ADR-0029.
+6. **El embudo**: Capa 1 (reglas) → Capa 2 (embeddings + pgvector) → Capa 3 (`scoreJob`,
+   hoy un stub) → bandeja priorizada en `apps/web`.
+7. **`apps/worker`** deja de ser un esqueleto: colas BullMQ de ingesta, enriquecimiento
+   y scoring.

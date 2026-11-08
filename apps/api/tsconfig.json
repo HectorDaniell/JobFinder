@@ -1,4 +1,8 @@
 {
+  // Config de COMPROBACIÓN DE TIPOS (la que usan `pnpm type-check` y el editor).
+  // Incluye los tests a propósito: son el mayor conjunto de pruebas del repo y
+  // hasta ahora ningún archivo de test se comprobaba de tipos en todo el
+  // proyecto. Para compilar se usa `tsconfig.build.json`, que sí los excluye.
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "module": "CommonJS",
@@ -10,9 +14,18 @@
     "declarationMap": false,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    // Esta config NO emite, y conviene que sea imposible, no solo costumbre:
+    // con los tests incluidos, un `tsc` sin `--noEmit` escupiría `.js` al lado
+    // de cada `.ts` de tests/. `tsconfig.build.json` lo revierte a false, que es
+    // el único sitio donde se compila de verdad.
+    "noEmit": true,
+    // `.` y no `./src`: con los tests dentro, acotar la raíz a src/ hace que
+    // TypeScript falle con TS6059 ("no está bajo rootDir") antes de comprobar
+    // un solo tipo. No afecta a la emisión porque aquí nunca se emite; el
+    // `dist` lo produce tsconfig.build.json, que sí fija rootDir a ./src.
+    "rootDir": ".",
     "baseUrl": "."
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

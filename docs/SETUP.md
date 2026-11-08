@@ -1,6 +1,6 @@
 # JobFinder — Guía de instalación y setup
 
-> Última actualización: 2026-06-22 · Arquitectura: Node + TypeScript + Docker + Postgres
+> Última actualización: 2026-08-08 · Arquitectura: Node + TypeScript + Docker + Postgres
 
 ---
 
@@ -77,13 +77,18 @@ Copia el contenido de abajo en un archivo llamado `.env` en la carpeta `jobfinde
 
 ```bash
 # ============ DATABASE ============
-DATABASE_URL="postgresql://jobfinder:localdev@localhost:5432/jobfinder"
+# OJO: puerto 5433, no 5432 — el contenedor se publica en 5433 para no chocar
+# con otros Postgres de tu máquina (ver docker-compose.yml).
+DATABASE_URL="postgresql://jobfinder:localdev@localhost:5433/jobfinder"
 
 # ============ REDIS ============
 REDIS_URL="redis://localhost:6379"
 
 # ============ ANTHROPIC (LLM RAZONAMIENTO) ============
 ANTHROPIC_API_KEY="sk-ant-v4-..." # Tu API key de Anthropic (https://console.anthropic.com)
+# Desarrollo sin créditos: sustituye SOLO la llamada a Claude por un doble local.
+# El resto (perfil, bullets, PDF/DOCX) sigue siendo real. Ver docs/adr/0022.
+USE_FAKE_LLM="false"
 
 # ============ VOYAGE AI (EMBEDDINGS) ============
 VOYAGE_API_KEY="pa-..." # Tu API key de Voyage (https://www.voyageai.com)
@@ -185,22 +190,33 @@ jobfinder-redis Up ...
 
 > Si algo falla, revisa que **Docker Desktop esté abierto** y corriendo.
 
-### 4.2 Crear la base de datos y aplicar migraciones (SOLO LA PRIMERA VEZ)
+### 4.2 Crear la base de datos y aplicar migraciones
 
 ```bash
 pnpm run migrate
 ```
 
-Esto crea las tablas (job, profile, bullet, etc.) en Postgres. **Salida esperada:**
+Esto aplica las migraciones **pendientes** (crea las tablas la primera vez).
+**Salida esperada:**
 ```
-✓ Migration completed: 0001_create_tables.sql
+⏳ Running migrations...
+✅ Migrations completed successfully!
 ```
 
-**Importante:** Ejecuta esto **UNA SOLA VEZ**. Los días siguientes, ya no lo necesitas (las tablas ya existen).
+**Es seguro ejecutarlo siempre.** Drizzle lleva un registro de las migraciones ya
+aplicadas (`drizzle.__drizzle_migrations`), así que volver a correrlo cuando no hay
+nada pendiente no hace nada.
 
-Solo vuelves a ejecutarlo si:
-- Borraste la BD: `docker compose down -v`
-- Hay nuevas migraciones en el repositorio (alguien escribió cambios al schema)
+En el día a día no hace falta, pero **sí después de un `git pull`**: si alguien
+añadió una migración, tu BD se queda atrás sin avisar. Migraciones actuales:
+
+| Migración | Qué hace |
+|---|---|
+| `0000_fat_toad_men` | Tablas iniciales |
+| `0001_add_experience` | Tabla `experience` + `bullet.experience_id` |
+| `0002_fix_jsonb_double_encoding` | Repara el JSON guardado como cadena (ADR-0024) |
+| `0003_experience_as_container` | `experience.kind` + `bullet.experience_id` obligatorio (ADR-0028) |
+| `0004_thin_jobs` | `job.description` pasa a nullable + `enrichment_failed` y `enriched_by` (ADR-0029) |
 
 ### 4.3 Levantar las apps (dos opciones)
 
@@ -276,7 +292,7 @@ Respuesta esperada:
 
 Abre **DBeaver** (si lo instalaste) y conecta a Postgres:
 - Host: `localhost`
-- Port: `5432`
+- Port: `5433`
 - Database: `jobfinder`
 - User: `jobfinder`
 - Password: `localdev`
@@ -346,7 +362,10 @@ Docker no está instalado o no inició. Abre la app **Docker Desktop** manualmen
 docker compose logs db
 ```
 
-Ve si Postgres levantó sin errores. Si falló, puede ser que otro contenedor tenga el puerto 5432. Intenta:
+Ve si Postgres levantó sin errores. Si falló, puede ser que otro proceso tenga el puerto 5433
+ocupado. Si el error aparece solo al usar la app (y no al arrancar), revisa que `DATABASE_URL`
+apunte al **5433**: `postgres-js` conecta de forma perezosa, así que un puerto mal puesto no
+falla al arrancar, sino en la primera consulta. Intenta:
 ```bash
 docker compose down
 docker volume rm jobfinder_pgdata  # Borra los datos (solo si quieres empezar limpio)
@@ -443,11 +462,18 @@ docker compose -f docker-compose.prod.yml up
 1. ✅ Verificar que todo corre (sección 5).
 2. ✅ Leer [PRD.md](./PRD.md) para entender el plan.
 3. ✅ Leer [ARQUITECTURA.md](./ARQUITECTURA.md) para entender el diseño.
-4. 🚀 **Empezar Fase 1** (Perfil + Adaptación de CV/carta):
-   - Crear endpoint para importar CV desde Google Docs.
-   - Crear perfil maestro + banco de bullets.
-   - Generar CV/carta adaptados a un JD pegado a mano.
-   - Exportar a PDF/DOCX ATS-friendly.
+4. 🚀 **Usar la app** (la Fase 1 ya está construida):
+   - http://localhost:3000 → crea tu perfil (3 pasos).
+   - Añade tu **historial** en *Historial*: empleos, proyectos y educación —
+     dan organización y fechas al CV.
+   - Carga tu banco de bullets y asigna cada uno a su contenedor.
+   - Pega una oferta en la pantalla *Tailor* → descarga el CV y la carta en PDF/DOCX.
+   - Sin `ANTHROPIC_API_KEY`, pon `USE_FAKE_LLM="true"` para recorrer el flujo
+     igualmente (los documentos generados son reales).
+5. 📈 Ver [PROGRESS.md](./PROGRESS.md) para el estado y lo que viene (Fase 2: ingesta).
+
+> Nota: el **worker** todavía es un esqueleto (se usará en la Fase 2 para la ingesta
+> programada). Para la Fase 1 basta con `dev:api` y `dev:web`.
 
 ---
 
