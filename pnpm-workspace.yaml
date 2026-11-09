@@ -3,6 +3,7 @@ packages:
   - 'packages/*'
 allowBuilds:
   '@nestjs/core': true
+  '@swc/core': true
   es5-ext: true
   esbuild: true
   msgpackr-extract: true
