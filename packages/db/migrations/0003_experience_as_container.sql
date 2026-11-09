@@ -10,8 +10,18 @@ ALTER TABLE "experience" ALTER COLUMN "kind" SET NOT NULL;--> statement-breakpoi
 -- 2. Los campos que ahora se reinterpretan según `kind` (empresa/rol para un
 --    empleo, contexto/nombre para un proyecto, institución/título para un
 --    grado) se renombran a su nombre genérico.
-ALTER TABLE "experience" RENAME COLUMN "company" TO "organization";--> statement-breakpoint
-ALTER TABLE "experience" RENAME COLUMN "role" TO "title";--> statement-breakpoint
+-- Renombrar solo si la columna vieja existe (o ignorar error 42703 undefined_column)
+DO $$ BEGIN
+  ALTER TABLE "experience" RENAME COLUMN "company" TO "organization";
+EXCEPTION
+  WHEN undefined_column THEN null;
+END $$;--> statement-breakpoint
+
+DO $$ BEGIN
+  ALTER TABLE "experience" RENAME COLUMN "role" TO "title";
+EXCEPTION
+  WHEN undefined_column THEN null;
+END $$;--> statement-breakpoint
 
 -- 3. `url`: solo lo usan los proyectos.
 ALTER TABLE "experience" ADD COLUMN IF NOT EXISTS "url" text;--> statement-breakpoint
