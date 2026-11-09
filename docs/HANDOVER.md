@@ -167,9 +167,8 @@ cp .env.example .env
 # 5. Aplicar migraciones a Postgres
 pnpm --filter db run migrate
 
-# 6. Compilar packages con dependencias de tipos
-pnpm --filter sources run build
-pnpm --filter core run build
+# 6. Compilar todos los packages internos del monorepo
+pnpm run build:packages
 
 # 7. Verificar salud completa del repositorio
 pnpm vitest run packages/        # Deben pasar 121 tests

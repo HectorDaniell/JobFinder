@@ -50,11 +50,12 @@ framework (NestJS) vive solo en `apps/api`.
 ## Puesta en marcha
 
 ```bash
-pnpm run docker:up   # Postgres (5433) + Redis
+pnpm run docker:up       # Postgres (5433) + Redis
 pnpm install
-pnpm run migrate     # crea las tablas (solo la primera vez)
-pnpm run dev:api     # API en :3001
-pnpm run dev:web     # UI en :3000
+pnpm run build:packages  # compila los packages internos (@jobfinder/*)
+pnpm run migrate         # crea las tablas (solo la primera vez)
+pnpm run dev:api         # API en :3001
+pnpm run dev:web         # UI en :3000
 ```
 
 Copia `.env.example` a `.env`. Sin `ANTHROPIC_API_KEY`, pon `USE_FAKE_LLM=true`

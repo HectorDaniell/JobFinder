@@ -62,14 +62,16 @@ git clone <url-del-repo> jobfinder
 cd jobfinder
 ```
 
-### 2.2 Instalar dependencias
+### 2.2 Instalar dependencias y compilar paquetes internos
 
 ```bash
 pnpm install
+pnpm run build:packages
 ```
 
-Esto descarga todas las librerías que el proyecto necesita (NestJS, Next.js, Drizzle, etc.).
-Toma 3–5 minutos la primera vez. Es seguro hacer esto múltiples veces.
+- `pnpm install` descarga todas las librerías externas (NestJS, Next.js, Drizzle, etc.).
+  > **Nota sobre pnpm v11:** Si aparece `ERR_PNPM_IGNORED_BUILDS`, verifica que en `pnpm-workspace.yaml` los paquetes bajo `allowBuilds` tengan `true` (p. ej. `'@swc/core': true`) y vuelve a correr `pnpm install`.
+- `pnpm run build:packages` compila los paquetes internos del monorepo (`@jobfinder/core`, `db`, `llm`, `documents`, `sources`) generando sus carpetas `dist/` (que no se suben a Git). Sin este paso, `apps/api` y `apps/web` fallarán con `Cannot find module '@jobfinder/...'`.
 
 ### 2.3 Crear el archivo `.env` en la raíz del proyecto
 
@@ -338,7 +340,7 @@ Guarda el archivo `backup_jobfinder.sql` en un lugar seguro (o en el repo, si qu
 ### Restaurar en otra máquina
 
 1. Clonas el repo en la otra máquina.
-2. `pnpm install`
+2. `pnpm install && pnpm run build:packages`
 3. Levantas Docker: `docker compose up -d`
 4. Aplicas el backup:
    ```bash
@@ -351,6 +353,13 @@ Guarda el archivo `backup_jobfinder.sql` en un lugar seguro (o en el repo, si qu
 ---
 
 ## 8. Troubleshooting
+
+### "Cannot find module '@jobfinder/core' (o '@jobfinder/db')"
+
+Los paquetes internos (`packages/*`) aún no se han compilado a `dist/`. Ejecuta en la raíz:
+```bash
+pnpm run build:packages
+```
 
 ### "Docker command not found"
 
@@ -498,5 +507,7 @@ Si algo no funciona:
    ```bash
    docker compose down -v   # -v borra volúmenes
    pnpm install
+   pnpm run build:packages
+   docker compose up -d
    pnpm run migrate
    ```
